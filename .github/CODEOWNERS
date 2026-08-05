@@ -1,0 +1,13 @@
+# Default owner for all repository content.
+* @Sodastream1218
+
+# High-risk architecture and release surfaces.
+/src/main/java/de/sodaeconomy/storage/ @Sodastream1218
+/src/main/java/de/sodaeconomy/transaction/ @Sodastream1218
+/src/main/java/de/sodaeconomy/integration/ @Sodastream1218
+/src/main/java/de/sodaeconomy/identity/ @Sodastream1218
+/src/main/resources/plugin.yml @Sodastream1218
+/src/main/resources/config.yml @Sodastream1218
+/pom.xml @Sodastream1218
+/build.gradle.kts @Sodastream1218
+/.github/workflows/ @Sodastream1218
