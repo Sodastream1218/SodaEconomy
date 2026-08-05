@@ -1,0 +1,10 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: Documentation
+    url: https://github.com/Sodastream1218/SodaEconomy/tree/main/docs
+    about: Read the SodaEconomy documentation before opening an issue.
+
+  - name: Discussions
+    url: https://github.com/Sodastream1218/SodaEconomy/discussions
+    about: Use Discussions for general questions and community conversations.

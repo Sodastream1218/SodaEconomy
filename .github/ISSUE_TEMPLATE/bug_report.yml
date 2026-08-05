@@ -1,0 +1,81 @@
+name: Bug report
+description: Report a reproducible problem in SodaEconomy.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug. Please provide enough information to reproduce it.
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: SodaEconomy version
+      placeholder: "Example: 1.0.0-alpha.1"
+    validations:
+      required: true
+
+  - type: input
+    id: server-version
+    attributes:
+      label: Server software and version
+      placeholder: "Example: Paper 1.21.1 build 123"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: storage
+    attributes:
+      label: Storage backend
+      options:
+        - YAML
+        - SQLite
+        - MySQL
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: integrations
+    attributes:
+      label: Active integrations
+      options:
+        - label: Vault
+        - label: Floodgate / Geyser
+        - label: Multi-server MySQL setup
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem description
+      description: Explain what happened and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start the server
+        2. Run /eco ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or stack trace
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Final checks
+      options:
+        - label: I tested this with the latest available SodaEconomy version.
+          required: true
+        - label: I removed passwords, tokens and other sensitive data from the logs.
+          required: true

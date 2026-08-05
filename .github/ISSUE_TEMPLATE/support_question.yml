@@ -1,0 +1,34 @@
+name: Support question
+description: Ask for help with setup, configuration or usage.
+title: "[Support]: "
+labels:
+  - support
+body:
+  - type: input
+    id: plugin-version
+    attributes:
+      label: SodaEconomy version
+    validations:
+      required: true
+
+  - type: input
+    id: server-version
+    attributes:
+      label: Server software and version
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Describe what you are trying to do and where you are stuck.
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant configuration
+      description: Remove passwords and sensitive values before posting.
+      render: yaml
