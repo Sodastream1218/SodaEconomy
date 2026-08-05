@@ -19,3 +19,16 @@ transitive dependency into the plugin JAR.
 Vault remains a service provider integration only. SodaEconomy registers an
 Economy implementation with Bukkit's `ServicesManager` when Vault is present;
 it does not replace the Vault plugin itself.
+
+## JDBC driver
+
+The published plugin JAR must not embed a MySQL or MariaDB JDBC driver.
+
+- Runtime library: `org.mariadb.jdbc:mariadb-java-client:3.5.9`
+- Runtime delivery: Paper `plugin.yml` `libraries`
+- Maven: test scope only
+- Gradle: `testRuntimeOnly` only
+- JDBC scheme: `jdbc:mariadb:`
+- Storage/config name: remains `MYSQL`
+- Forbidden release-JAR packages: `com/mysql/`, `de/sodaeconomy/libs/mysql/`,
+  `org/mariadb/jdbc/`, `com/google/protobuf/`

@@ -260,6 +260,15 @@ public class StorageManager {
      * independent data sets, so accepting writes in the old storage during this server run would
      * create balances that cannot be reconciled safely when the requested target recovers.
      */
+    private static <T extends Throwable> T findCause(Throwable failure, Class<T> type) {
+        Throwable current = failure;
+        while (current != null) {
+            if (type.isInstance(current)) return type.cast(current);
+            current = current.getCause();
+        }
+        return null;
+    }
+
     private Storage initializeTarget(StorageType targetType) throws StorageStartupException {
         try {
             Storage target = initializeStorage(targetType, "Target");
@@ -268,12 +277,21 @@ public class StorageManager {
         } catch (StorageStartupException exception) {
             throw exception;
         } catch (Exception exception) {
-            String message = targetType == StorageType.MYSQL
-                    ? "Die MySQL-Konfiguration ist gültig, aber MySQL ist derzeit nicht erreichbar oder konnte nicht initialisiert werden. "
-                    + "Es wurde kein Fallback verwendet, keine Migration durchgeführt und weder config.yml noch der Storage-Status geändert. "
-                    + "Bitte prüfe Erreichbarkeit, Netzwerk, Zugangsdaten und Berechtigungen."
-                    : "Das ausgewählte Storage-System " + targetType + " konnte nicht initialisiert werden. "
-                    + "Es wurden keine Daten migriert und kein Storage-Status geändert.";
+            JdbcDriverUnavailableException missingDriver = findCause(exception, JdbcDriverUnavailableException.class);
+            String message;
+            if (missingDriver != null) {
+                message = "Der externe JDBC-Treiber für MYSQL konnte nicht geladen werden. "
+                        + missingDriver.getMessage() + " Der Server wurde ohne Datenänderung angehalten; "
+                        + "prüfe Internetzugriff bzw. den Paper-Library-Cache und starte anschließend neu.";
+            } else if (targetType == StorageType.MYSQL) {
+                message = "Die MYSQL-Konfiguration ist gültig, aber der MySQL-/MariaDB-Server ist derzeit nicht "
+                        + "erreichbar oder konnte nicht initialisiert werden. Es wurde kein Fallback verwendet, keine "
+                        + "Migration durchgeführt und weder config.yml noch der Storage-Status geändert. Bitte prüfe "
+                        + "Erreichbarkeit, Netzwerk, Zugangsdaten und Berechtigungen.";
+            } else {
+                message = "Das ausgewählte Storage-System " + targetType + " konnte nicht initialisiert werden. "
+                        + "Es wurden keine Daten migriert und kein Storage-Status geändert.";
+            }
             throw new StorageStartupException(StorageStartupException.Kind.TARGET_UNAVAILABLE, message, exception);
         }
     }

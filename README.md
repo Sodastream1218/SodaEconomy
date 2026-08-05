@@ -1,6 +1,6 @@
 # SodaEconomy
 
-SodaEconomy is a Paper/Purpur economy plugin with YAML, SQLite, and MySQL storage backends.
+SodaEconomy is a Paper/Purpur economy plugin with YAML, SQLite, and MySQL/MariaDB storage backends.
 Wallet balances remain in their dedicated balance store for fast reads. Every wallet mutation is
 also written to an immutable transaction journal, so normal balance reads never replay history.
 
@@ -180,9 +180,9 @@ risking a split-brain migration.
 
 ## Release hardening stage 5
 
-The optional MySQL integration suite now includes explicit two-instance network-concurrency tests. They verify that independent plugin storage instances sharing one database cannot overspend the same wallet and that one idempotency key produces exactly one durable transaction and one balance mutation even when submitted concurrently from different instances.
+The optional JDBC integration suite runs with MariaDB Connector/J against both MySQL and MariaDB and includes explicit two-instance network-concurrency tests. They verify that independent plugin storage instances sharing one database cannot overspend the same wallet and that one idempotency key produces exactly one durable transaction and one balance mutation even when submitted concurrently from different instances.
 
-Run these tests against an isolated MySQL database by setting `SODAECONOMY_TEST_MYSQL=true` and the credentials documented in `src/test/README.md`, then execute `./mvnw verify`.
+Run these tests against an isolated MySQL or MariaDB database by setting `SODAECONOMY_TEST_MYSQL=true` and the credentials documented in `src/test/README.md`, then execute `./mvnw verify`.
 
 ## Safe config reload
 
@@ -197,3 +197,7 @@ When Vault is installed, SodaEconomy can register as its economy provider. The a
 same durable TransactionService, journal, audit, statistics and rollback paths as native commands;
 it never writes directly to storage. Vault is optional and can be disabled under
 `integrations.vault`. See `docs/vault-integration.md` for configuration and consistency details.
+
+## JDBC driver delivery
+
+MySQL and MariaDB connections use MariaDB Connector/J loaded through Paper libraries; the driver is not embedded in the SodaEconomy JAR. Existing `storage.type: MYSQL` configurations remain valid. See `docs/jdbc-driver-migration.md`.

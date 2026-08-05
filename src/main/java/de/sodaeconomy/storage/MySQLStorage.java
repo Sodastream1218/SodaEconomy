@@ -23,8 +23,6 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.math.BigDecimal;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -44,8 +42,9 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * MySQL storage with serialized access and explicit JDBC transactions for every multi-account
- * mutation. The schema migration is deliberately idempotent so an interrupted startup can be
+ * MySQL/MariaDB storage backed by MariaDB Connector/J, with serialized access and explicit JDBC
+ * transactions for every multi-account mutation. The public storage name remains MYSQL for config
+ * compatibility. Schema migration is deliberately idempotent so an interrupted startup can be
  * retried safely without modifying existing balances.
  */
 @SuppressWarnings("removal")
@@ -85,6 +84,7 @@ public class MySQLStorage implements Storage, WalletTransactionStore, StorageMai
     private String schemaLockName;
     private String maintenanceLockName;
     private boolean transactionActive;
+    private boolean jdbcMetadataLogged;
     private String localMaintenanceToken;
 
     @Override
@@ -98,27 +98,41 @@ public class MySQLStorage implements Storage, WalletTransactionStore, StorageMai
         String database = plugin.getConfig().getString("storage.mysql.database", "sodaeconomy");
         user = plugin.getConfig().getString("storage.mysql.user", "root");
         password = plugin.getConfig().getString("storage.mysql.password", "");
-        url = "jdbc:mysql://" + host + ":" + port + "/" + database
-                + buildParameters(plugin.getConfig().getConfigurationSection("storage.mysql.params"));
+        MariaDbJdbcConfiguration.Result jdbcConfiguration = MariaDbJdbcConfiguration.create(
+                host, port, database, readConnectionParameters(
+                        plugin.getConfig().getConfigurationSection("storage.mysql.params")));
+        url = jdbcConfiguration.jdbcUrl();
+        jdbcConfiguration.warnings().forEach(warning -> plugin.getLogger().warning("[Storage] " + warning));
         schemaLockName = SCHEMA_LOCK_PREFIX + database;
         maintenanceLockName = "sodaeconomy-maintenance-" + database;
+        jdbcMetadataLogged = false;
 
-        Class.forName(com.mysql.cj.jdbc.Driver.class.getName());
+        loadMariaDbDriver();
+        if (debug) {
+            plugin.getLogger().info("[Storage] MariaDB Connector/J requested through Paper libraries for the "
+                    + "configured MYSQL backend (jdbc:mariadb scheme).");
+        }
         ensureConnected();
     }
 
-    private String buildParameters(ConfigurationSection parameters) {
-        if (parameters == null || parameters.getKeys(false).isEmpty()) return "";
-
-        StringBuilder result = new StringBuilder("?");
+    private Map<String, Object> readConnectionParameters(ConfigurationSection parameters) {
+        Map<String, Object> values = new HashMap<>();
+        if (parameters == null) return values;
         for (String key : parameters.getKeys(false)) {
-            String value = parameters.getString(key);
-            if (value == null) continue;
-            if (result.length() > 1) result.append('&');
-            result.append(URLEncoder.encode(key, StandardCharsets.UTF_8));
-            result.append('=').append(URLEncoder.encode(value, StandardCharsets.UTF_8));
+            Object value = parameters.get(key);
+            if (value != null) values.put(key, value);
         }
-        return result.length() == 1 ? "" : result.toString();
+        return values;
+    }
+
+    private void loadMariaDbDriver() throws SQLException {
+        try {
+            Class.forName(MariaDbJdbcConfiguration.DRIVER_CLASS);
+        } catch (ClassNotFoundException exception) {
+            throw new JdbcDriverUnavailableException("MariaDB Connector/J is unavailable. Paper must resolve "
+                    + MariaDbJdbcConfiguration.CONNECTOR_COORDINATES
+                    + " from the plugin.yml libraries section before MYSQL storage can start.", exception);
+        }
     }
 
     private void ensureConnected() throws Exception {
@@ -138,11 +152,26 @@ public class MySQLStorage implements Storage, WalletTransactionStore, StorageMai
         }
 
         connection = DriverManager.getConnection(url, user, password);
+        logJdbcMetadataOnce();
         try {
             ensureSchema();
         } catch (Exception exception) {
             close();
             throw exception;
+        }
+    }
+
+    private void logJdbcMetadataOnce() {
+        if (!debug || jdbcMetadataLogged || connection == null) return;
+        try {
+            var metadata = connection.getMetaData();
+            plugin.getLogger().info("[Storage] JDBC driver: " + metadata.getDriverName() + " "
+                    + metadata.getDriverVersion() + "; database: " + metadata.getDatabaseProductName() + " "
+                    + metadata.getDatabaseProductVersion() + ".");
+            jdbcMetadataLogged = true;
+        } catch (SQLException exception) {
+            plugin.getLogger().warning("[Storage] JDBC connection succeeded, but driver metadata could not be read: "
+                    + exception.getMessage());
         }
     }
 
@@ -2096,7 +2125,7 @@ public class MySQLStorage implements Storage, WalletTransactionStore, StorageMai
     private void sleepBeforeRetry(int attempt, SQLException cause) throws SQLException {
         long delayMillis = Math.min(25L * attempt, 100L);
         if (debug) {
-            plugin.getLogger().warning("[Storage] Retrying transient MySQL wallet transaction failure in "
+            plugin.getLogger().warning("[Storage] Retrying transient MYSQL/MariaDB wallet transaction failure in "
                     + delayMillis + " ms (attempt " + attempt + "/" + MYSQL_TRANSACTION_RETRY_ATTEMPTS
                     + "): " + cause.getMessage());
         }
@@ -2104,7 +2133,7 @@ public class MySQLStorage implements Storage, WalletTransactionStore, StorageMai
             Thread.sleep(delayMillis);
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
-            SQLException wrapped = new SQLException("Interrupted while retrying a transient MySQL wallet transaction",
+            SQLException wrapped = new SQLException("Interrupted while retrying a transient MYSQL/MariaDB wallet transaction",
                     interrupted);
             wrapped.addSuppressed(cause);
             throw wrapped;

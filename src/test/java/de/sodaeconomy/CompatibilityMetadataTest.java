@@ -76,6 +76,30 @@ class CompatibilityMetadataTest {
     }
 
     @Test
+    void jdbcDriverIsPaperProvidedMariaDbAndNeverShaded() throws IOException {
+        String pluginYml = Files.readString(PROJECT_ROOT.resolve("src/main/resources/plugin.yml"));
+        String pom = Files.readString(PROJECT_ROOT.resolve("pom.xml"));
+        String gradle = readOptionalBuildFile("build.gradle.kts");
+
+        assertTrue(pluginYml.contains("org.mariadb.jdbc:mariadb-java-client:3.5.9"));
+        assertTrue(!pom.contains("<groupId>com.mysql</groupId>"));
+        assertTrue(!pom.contains("<artifactId>mysql-connector-j</artifactId>"));
+        assertTrue(pom.contains("<artifactId>mariadb-java-client</artifactId>"));
+        assertTrue(pom.contains("<scope>test</scope>"));
+        assertTrue(!pom.contains("<pattern>com.mysql</pattern>"));
+        assertTrue(!gradle.contains("com.mysql:mysql-connector-j"));
+        assertTrue(gradle.contains("testRuntimeOnly(\"org.mariadb.jdbc:mariadb-java-client:3.5.9\")"));
+        assertTrue(!gradle.contains("relocate(\"com.mysql\""));
+        assertTrue(Files.isRegularFile(PROJECT_ROOT.resolve("docs/jdbc-driver-migration.md")));
+        Path notices = PROJECT_ROOT.resolve("THIRD_PARTY_NOTICES.md");
+        Path packagedNotices = PROJECT_ROOT.resolve("src/main/resources/META-INF/THIRD_PARTY_NOTICES.md");
+        assertTrue(Files.isRegularFile(notices));
+        assertTrue(Files.isRegularFile(packagedNotices));
+        assertTrue(Files.readString(notices).equals(Files.readString(packagedNotices)),
+                "The packaged third-party notices must match the repository notice inventory.");
+    }
+
+    @Test
     void compatibilityDocumentationExists() {
         Path documentation = PROJECT_ROOT.resolve("docs/compatibility.md");
         assertTrue(Files.isRegularFile(documentation),

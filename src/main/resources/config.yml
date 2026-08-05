@@ -52,9 +52,10 @@ storage:
     # Required and must not be empty when MYSQL is selected.
     password: ""
 
-    # Advanced parameters (optional)
+    # Advanced parameters (optional). SodaEconomy keeps these legacy keys compatible while
+    # connecting through MariaDB Connector/J. useSSL is translated to sslMode; autoReconnect is
+    # deliberately ignored because reconnecting inside an active transaction can hide its outcome.
     params:
-      # Automatic reconnect can hide an unknown transaction outcome after a network failure.
       useSSL: false
       autoReconnect: false
       allowPublicKeyRetrieval: true

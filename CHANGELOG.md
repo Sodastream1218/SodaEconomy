@@ -7,6 +7,11 @@ The project follows Semantic Versioning for public releases and uses prerelease 
 
 ## [Unreleased]
 
+### Changed
+
+- Replaced the embedded MySQL Connector/J with Paper-provided MariaDB Connector/J 3.5.9 while preserving the existing MYSQL configuration, schema and transaction behavior.
+- Added identical CI integration coverage for MySQL 8.4 and MariaDB 11.8 LTS.
+
 ### Added
 
 - Initial public repository infrastructure and maintainer documentation.

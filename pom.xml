@@ -18,6 +18,7 @@
         <junit.version>5.10.1</junit.version>
         <mockbukkit.version>3.58.1</mockbukkit.version>
         <vaultapi.version>1.7.1</vaultapi.version>
+        <mariadb.connector.version>3.5.9</mariadb.connector.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -49,10 +50,13 @@
             <artifactId>sqlite-jdbc</artifactId>
             <version>3.46.1.3</version>
         </dependency>
+        <!-- Paper loads this library in production through plugin.yml. Test scope keeps the
+             integration suite executable without embedding the driver in the release JAR. -->
         <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
-            <version>8.4.0</version>
+            <groupId>org.mariadb.jdbc</groupId>
+            <artifactId>mariadb-java-client</artifactId>
+            <version>${mariadb.connector.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -167,6 +171,31 @@
                 </executions>
             </plugin>
 
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>ban-legacy-mysql-connector</id>
+                        <phase>validate</phase>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <excludes>
+                                        <exclude>com.mysql:mysql-connector-j</exclude>
+                                    </excludes>
+                                    <searchTransitive>true</searchTransitive>
+                                    <message>MySQL Connector/J must not be restored; Paper provides MariaDB Connector/J at runtime.</message>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -178,13 +207,6 @@
                         <configuration>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                             <minimizeJar>false</minimizeJar>
-                            <relocations>
-                                <!-- sqlite-jdbc native symbols are bound to org.sqlite and must not be relocated. -->
-                                <relocation>
-                                    <pattern>com.mysql</pattern>
-                                    <shadedPattern>de.sodaeconomy.libs.mysql</shadedPattern>
-                                </relocation>
-                            </relocations>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                             </transformers>

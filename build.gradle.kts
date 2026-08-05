@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 plugins {
     java
     jacoco
@@ -16,12 +18,17 @@ java {
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
+    maven("https://jitpack.io")
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.20.2-R0.1-SNAPSHOT")
+    compileOnly("com.github.MilkBowl:VaultAPI:1.7.1") {
+        isTransitive = false
+    }
     implementation("org.xerial:sqlite-jdbc:3.46.1.3")
-    implementation("com.mysql:mysql-connector-j:8.4.0")
+    // Paper supplies the JDBC driver in production via plugin.yml libraries.
+    testRuntimeOnly("org.mariadb.jdbc:mariadb-java-client:3.5.9")
 
     // The server API is provided by Paper in production, but MockBukkit tests compile and run against it.
     testImplementation("io.papermc.paper:paper-api:1.20.2-R0.1-SNAPSHOT")
@@ -71,7 +78,6 @@ tasks.shadowJar {
     archiveClassifier.set("")
     // sqlite-jdbc binds native methods to the original org.sqlite JNI class names.
     // Relocating this package produces UnsatisfiedLinkError at runtime.
-    relocate("com.mysql", "de.sodaeconomy.libs.mysql")
     mergeServiceFiles()
     exclude("META-INF/MANIFEST.MF")
     manifest {
@@ -81,6 +87,35 @@ tasks.shadowJar {
 
 tasks.assemble {
     dependsOn(tasks.shadowJar)
+}
+
+val verifyNoEmbeddedDatabaseServerDriver by tasks.registering {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Verifies that the release JAR contains neither MySQL nor MariaDB Connector/J classes."
+    dependsOn(tasks.shadowJar)
+
+    doLast {
+        val releaseJar = tasks.shadowJar.get().archiveFile.get().asFile
+        val forbiddenPrefixes = listOf(
+            "com/mysql/",
+            "de/sodaeconomy/libs/mysql/",
+            "org/mariadb/jdbc/",
+            "com/google/protobuf/"
+        )
+        // Inspect the archive directly so package entry names are deterministic across Gradle versions.
+        ZipFile(releaseJar).use { archive ->
+            val matches = archive.entries().asSequence()
+                .map { it.name }
+                .filter { entry -> forbiddenPrefixes.any(entry::startsWith) }
+                .toList()
+            check(matches.isEmpty()) {
+                "Release JAR contains an embedded database-server JDBC driver: ${matches.joinToString()}"
+            }
+            check(archive.getEntry("META-INF/THIRD_PARTY_NOTICES.md") != null) {
+                "Release JAR does not contain META-INF/THIRD_PARTY_NOTICES.md"
+            }
+        }
+    }
 }
 
 tasks.jacocoTestReport {
@@ -122,6 +157,7 @@ tasks.jacocoTestCoverageVerification {
 
 tasks.check {
     dependsOn(mysqlIntegrationTest)
+    dependsOn(verifyNoEmbeddedDatabaseServerDriver)
     dependsOn(tasks.jacocoTestCoverageVerification)
 }
 

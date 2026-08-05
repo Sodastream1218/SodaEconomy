@@ -4,8 +4,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -98,17 +96,6 @@ final class MySqlTestEnvironment {
     }
 
     String jdbcUrl() {
-        StringBuilder result = new StringBuilder("jdbc:mysql://")
-                .append(host).append(':').append(port).append('/').append(database);
-        if (parameters.isEmpty()) return result.toString();
-        result.append('?');
-        boolean first = true;
-        for (Map.Entry<String, String> entry : parameters.entrySet()) {
-            if (!first) result.append('&');
-            result.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8));
-            result.append('=').append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
-            first = false;
-        }
-        return result.toString();
+        return MariaDbJdbcConfiguration.create(host, port, database, parameters).jdbcUrl();
     }
 }

@@ -5,6 +5,8 @@ api-version: 1.20
 author: Sodastreamexpres
 description: Professionelles Economy-System mit Transaktionsjournal, Storage-Migrationen und auditierbarer API.
 softdepend: [Vault, floodgate]
+libraries:
+  - org.mariadb.jdbc:mariadb-java-client:3.5.9
 
 commands:
   balance:

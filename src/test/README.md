@@ -7,7 +7,7 @@ plugin for Java 17, which preserves compatibility with the current Paper 1.20.x 
 .\gradlew.bat test                  # Unit and MockBukkit tests; no MySQL required
 .\gradlew.bat mysqlIntegrationTest  # Only the isolated MySQL integration suite
 .\gradlew.bat check                 # Both suites and the critical-logic coverage gate
-.\gradlew.bat shadowJar             # Production-ready JAR with relocated JDBC drivers
+.\gradlew.bat shadowJar             # Production-ready JAR with bundled SQLite JDBC and an externally loaded MariaDB JDBC driver
 ```
 
 On Linux and macOS, replace `gradlew.bat` with `./gradlew`. The legacy Maven build remains
@@ -30,14 +30,14 @@ SQLite, and MySQL. Add storage-neutral balance or ledger behaviour there; add da
 SQL and connection checks to the MySQL integration tests.
 Each MockBukkit test receives a new server and releases it in `MockBukkitTestBase`.
 
-## Isolated MySQL test configuration
+## Isolated MySQL/MariaDB test configuration
 
-The production configuration is `src/main/resources/config.yml`. MySQL integration tests instead
+The production configuration is `src/main/resources/config.yml`. Shared JDBC integration tests instead
 read `src/test/resources/mysql-integration.properties`; that file contains only environment-variable
 names, never hostnames or credentials. CI and local development therefore use the same test code
 without any possibility of falling back to a production configuration.
 
-Start a disposable local MySQL 8.4 instance, for example:
+Start either a disposable MySQL 8.4 instance or a MariaDB 11.8 LTS instance. MySQL example:
 
 ```powershell
 docker run --rm --name sodaeconomy-mysql-test `
@@ -46,6 +46,17 @@ docker run --rm --name sodaeconomy-mysql-test `
   -e MYSQL_PASSWORD=sodaeconomy_test_password `
   -e MYSQL_ROOT_PASSWORD=sodaeconomy_test_root_password `
   -e TZ=UTC -p 3306:3306 mysql:8.4
+```
+
+MariaDB example (use only one container on port 3306 at a time):
+
+```powershell
+docker run --rm --name sodaeconomy-mariadb-test `
+  -e MARIADB_DATABASE=sodaeconomy_test `
+  -e MARIADB_USER=sodaeconomy_test `
+  -e MARIADB_PASSWORD=sodaeconomy_test_password `
+  -e MARIADB_ROOT_PASSWORD=sodaeconomy_test_root_password `
+  -e TZ=UTC -p 3306:3306 mariadb:11.8
 ```
 
 In a second terminal, set the test-only environment values and run the tagged task:
@@ -66,12 +77,12 @@ credentials above — never a shared, staging, or production database.
 
 ## CI pipeline
 
-`.github/workflows/test.yml` starts a new MySQL 8.4 service container for every job. It waits for
+`.github/workflows/test.yml` runs the same suite once against MySQL 8.4 and once against MariaDB 11.8 LTS. It waits for
 the server, configures UTF-8 (`utf8mb4`) and UTC, then runs `test` followed by
 `mysqlIntegrationTest`. Credentials are confined to workflow and test-process environment
 variables. Docker service containers are discarded with the job, so no data is shared between runs.
 
-The MySQL suite covers schema-version migration and idempotence, CRUD including direct read-back,
+The shared JDBC suite covers schema-version migration and idempotence, CRUD including direct read-back,
 duplicate keys, null and malformed data, transaction rollback, concurrent transfers, connection
 failure, bounded unavailable-endpoint handling, reconnection, and explicit connection closure.
 There is no connection pool in the current storage implementation; the tests consequently verify

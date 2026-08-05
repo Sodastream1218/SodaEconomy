@@ -10,7 +10,7 @@ Officially supported for the 1.0 release candidate:
 
 - Paper/Purpur 1.20.2 and newer within the modern Paper API line
 - Java 17-compatible plugin bytecode running on the Java runtime required by the target server
-- YAML, SQLite and MySQL storage on the same plugin JAR
+- YAML, SQLite and MySQL/MariaDB storage on the same plugin JAR
 
 The current `plugin.yml` intentionally uses:
 
@@ -43,15 +43,15 @@ Maven and Gradle must both produce Java 17 class files without linking against n
 - Maven uses `maven-compiler-plugin` with `<release>${maven.compiler.release}</release>`.
 - Gradle uses `JavaCompile.options.release.set(17)`.
 - The Paper API dependency remains compile-only/provided and must not be shaded into the plugin.
-- MySQL Connector/J and sqlite-jdbc remain shaded because they are runtime storage dependencies.
+- sqlite-jdbc remains shaded. MariaDB Connector/J is loaded externally through Paper libraries and is never embedded.
 
 Do not replace the `release` compiler setting with only `source`/`target`; that would allow a build
 running on Java 21 or Java 25 to accidentally reference APIs that are unavailable on Java 17.
 
 ## Automated build matrix
 
-The GitHub Actions verification workflow runs the full Gradle test suite, MySQL integration tests
-and shaded-JAR build on both Java 17 and Java 21. Java 17 proves the released bytecode floor remains
+The GitHub Actions verification workflow runs the full Gradle test suite and the shared JDBC integration tests
+against both MySQL 8.4 and MariaDB 11.8 LTS, then builds and inspects the shaded JAR. Java 17 bytecode remains
 valid; Java 21 covers the recommended runtime for Paper 1.20 through 1.21.x. Newer Paper 26.x server
 lines must still be smoke-tested on their required Java runtime before compatibility is advertised.
 
@@ -73,7 +73,7 @@ The smoke test for every line must cover:
 1. Server startup with a fresh `plugins/SodaEconomy` folder.
 2. `/balance`, `/pay`, `/topbalance`, `/bank`, `/eco give`, `/eco remove`, `/eco reload`.
 3. Storage restart test for YAML and SQLite.
-4. MySQL startup and one transaction against an isolated MySQL database.
+4. MYSQL storage startup and one transaction against an isolated MySQL or MariaDB database.
 5. Clean shutdown without persistence warnings.
 
 ## MySQL network verification
@@ -84,7 +84,7 @@ Cross-version support does not replace the existing integration tests. Before re
 SODAECONOMY_TEST_MYSQL=true ./mvnw verify
 ```
 
-against an isolated MySQL test database. The integration suite verifies schema version 6,
+against an isolated MySQL or MariaDB test database. The integration suite verifies schema version 6,
 `sodaeconomy_runtime_state`, maintenance leases, idempotency, and two-instance concurrency.
 
 ## Compatibility decision log

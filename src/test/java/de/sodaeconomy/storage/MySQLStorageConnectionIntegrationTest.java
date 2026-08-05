@@ -8,6 +8,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.net.InetAddress;
 import java.net.ServerSocket;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.UUID;
@@ -23,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeout;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Connection failure and recovery tests against the MySQL service container. */
+/** Connection failure and recovery tests against either supported database service container. */
 @Tag("mysql-integration")
 @ResourceLock("mysql-integration")
 @EnabledIfEnvironmentVariable(named = "SODAECONOMY_TEST_MYSQL", matches = "true")
@@ -34,6 +35,16 @@ class MySQLStorageConnectionIntegrationTest extends MockBukkitTestBase {
     void configureMySql() {
         mysql = MySqlTestEnvironment.load();
         mysql.applyTo(plugin);
+    }
+
+
+    @Test
+    void usesMariaDbConnectorJForBothSupportedDatabaseProducts() throws Exception {
+        Class.forName(MariaDbJdbcConfiguration.DRIVER_CLASS);
+        try (Connection connection = mysql.openConnection()) {
+            assertTrue(connection.getMetaData().getDriverName().toLowerCase().contains("mariadb"));
+            assertTrue(connection.getMetaData().getURL().startsWith("jdbc:mariadb:"));
+        }
     }
 
     @Test

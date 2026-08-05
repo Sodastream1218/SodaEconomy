@@ -10,25 +10,35 @@ permissions:
 
 jobs:
   verify:
-    name: Build and test
+    name: Build and test (${{ matrix.database.name }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database:
+          - name: MySQL 8.4
+            engine: mysql
+            image: mysql:8.4
+            collation: utf8mb4_0900_ai_ci
+          - name: MariaDB 11.8 LTS
+            engine: mariadb
+            image: mariadb:11.8
+            collation: utf8mb4_unicode_ci
     services:
-      mysql:
-        image: mysql:8.4
+      database:
+        image: ${{ matrix.database.image }}
         env:
           MYSQL_DATABASE: sodaeconomy_test
           MYSQL_USER: sodaeconomy_test
           MYSQL_PASSWORD: sodaeconomy_test_password
           MYSQL_ROOT_PASSWORD: sodaeconomy_test_root_password
+          MARIADB_DATABASE: sodaeconomy_test
+          MARIADB_USER: sodaeconomy_test
+          MARIADB_PASSWORD: sodaeconomy_test_password
+          MARIADB_ROOT_PASSWORD: sodaeconomy_test_root_password
           TZ: UTC
         ports:
           - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -p$MYSQL_ROOT_PASSWORD --silent"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=30
-          --health-start-period=20s
     env:
       SODAECONOMY_TEST_MYSQL: 'true'
       SODAECONOMY_TEST_MYSQL_HOST: 127.0.0.1
@@ -54,21 +64,44 @@ jobs:
       - name: Make Gradle Wrapper executable
         run: chmod +x gradlew
 
-      - name: Wait for MySQL and configure its test database
+      - name: Wait for database and configure the isolated schema
+        env:
+          DATABASE_ENGINE: ${{ matrix.database.engine }}
+          DATABASE_COLLATION: ${{ matrix.database.collation }}
         run: |
           set -euo pipefail
-          for attempt in {1..30}; do
-            if docker exec '${{ job.services.mysql.id }}' mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent; then
-              docker exec '${{ job.services.mysql.id }}' mysql -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" -e "ALTER DATABASE sodaeconomy_test CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci; SET GLOBAL time_zone = '+00:00';"
+          if [[ "$DATABASE_ENGINE" == "mariadb" ]]; then
+            admin_client="mariadb-admin"
+            sql_client="mariadb"
+          else
+            admin_client="mysqladmin"
+            sql_client="mysql"
+          fi
+          for attempt in {1..40}; do
+            if docker exec '${{ job.services.database.id }}' "$admin_client" ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent; then
+              docker exec '${{ job.services.database.id }}' "$sql_client" -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" \
+                -e "ALTER DATABASE sodaeconomy_test CHARACTER SET utf8mb4 COLLATE $DATABASE_COLLATION; SET GLOBAL time_zone = '+00:00';"
               exit 0
             fi
             sleep 2
           done
-          echo "MySQL did not become ready in time." >&2
+          echo "$DATABASE_ENGINE did not become ready in time." >&2
           exit 1
 
       - name: Compile and run unit and MockBukkit tests
         run: ./gradlew --no-daemon clean test
 
-      - name: Run MySQL integration tests
+      - name: Run shared JDBC integration suite and build release JAR
         run: ./gradlew --no-daemon mysqlIntegrationTest jacocoTestReport jacocoTestCoverageVerification shadowJar
+
+      - name: Verify release JAR contains no external MySQL/MariaDB driver
+        run: |
+          set -euo pipefail
+          jar_file="$(find build/libs -maxdepth 1 -type f -name 'SodaEconomy-*.jar' ! -name '*-plain.jar' | head -n 1)"
+          test -n "$jar_file"
+          jar tf "$jar_file" > build/release-jar-contents.txt
+          if grep -Eq '^(com/mysql/|de/sodaeconomy/libs/mysql/|org/mariadb/jdbc/|com/google/protobuf/)' build/release-jar-contents.txt; then
+            echo "Release JAR unexpectedly contains a JDBC driver or MySQL protobuf classes." >&2
+            grep -E '^(com/mysql/|de/sodaeconomy/libs/mysql/|org/mariadb/jdbc/|com/google/protobuf/)' build/release-jar-contents.txt >&2
+            exit 1
+          fi
