@@ -24,6 +24,8 @@ Please describe your changes in a few sentences.
 - [ ] Documentation has been updated where necessary.
 - [ ] No sensitive information has been added.
 - [ ] The implementation follows the existing project architecture.
+- [ ] I have the necessary rights to submit this contribution.
+- [ ] I understand that accepted contributions are provided under the SodaEconomy project license.
 
 ---
 

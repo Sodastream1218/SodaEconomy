@@ -5,6 +5,29 @@ Wallet balances remain in their dedicated balance store for fast reads. Every wa
 also written to an immutable transaction journal, so normal balance reads never replay history.
 
 
+## License
+
+SodaEconomy is **source available**, not open source. It is licensed under the
+Apache License 2.0 subject to the Commons Clause License Condition v1.0 and the
+express permissions in [`LICENSE`](LICENSE).
+
+Use on monetized Minecraft servers and networks is expressly permitted,
+including revenue from ranks, shops, crates, donations, advertising,
+subscriptions, and server access. General Minecraft hosting may also include
+SodaEconomy as one component of a broader offering.
+
+The restriction applies to commercializing SodaEconomy itself: the JAR or
+source code may not be sold, placed behind a paid download, rebranded as a paid
+economy plugin, or offered as a substantially equivalent commercial substitute
+without prior written permission.
+
+Read the complete documents:
+
+- [`LICENSE`](LICENSE) — authoritative software terms
+- [`LICENSE-FAQ.md`](LICENSE-FAQ.md) — practical usage examples
+- [`TRADEMARKS.md`](TRADEMARKS.md) — project-name and branding rules
+- [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) — dependency attribution
+
 ## Compatibility
 
 SodaEconomy is built as a Java 17 plugin for modern Paper/Purpur servers. The current release

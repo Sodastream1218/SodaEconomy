@@ -133,6 +133,27 @@ Update the appropriate files when changing:
 - public usage or installation: `README.md`
 - release-visible behavior: `CHANGELOG.md`
 
+## Contribution licensing and rights
+
+By intentionally submitting a contribution for inclusion in SodaEconomy, you
+agree that the contribution is provided under the same project license:
+Apache License 2.0 subject to the Commons Clause License Condition v1.0 and the
+express permissions stated in `LICENSE`.
+
+You retain copyright in your contribution. You confirm that:
+
+- you created the contribution or otherwise have the necessary rights to
+  submit it;
+- the contribution does not knowingly include material under incompatible
+  terms;
+- required third-party attribution is disclosed; and
+- you are authorized to submit the work on behalf of an employer or other
+  rights holder when such authorization is necessary.
+
+SodaEconomy does not currently require a separate Contributor License
+Agreement. A maintainer may request provenance or rights information when a
+contribution contains third-party material or raises a licensing concern.
+
 ## Responsible contributions
 
 Only submit work you are legally permitted to contribute. Do not copy code, assets, or documentation

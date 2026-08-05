@@ -2,10 +2,11 @@
 
 ## Current JDBC status
 
-The former embedded `com.mysql:mysql-connector-j` dependency has been removed. SodaEconomy now
-uses `org.mariadb.jdbc:mariadb-java-client:3.5.9`, licensed LGPL-2.1-or-later, through Paper's
-external library loader. The MariaDB driver is test-only in Maven and test-runtime-only in Gradle and is not included
-in the release JAR.
+The former embedded `com.mysql:mysql-connector-j` dependency remains removed.
+SodaEconomy uses `org.mariadb.jdbc:mariadb-java-client:3.5.9`, licensed
+LGPL-2.1-or-later, through Paper's external library loader. The MariaDB driver
+is test-runtime-only in Maven and Gradle and is not included in the release
+JAR.
 
 Release verification rejects classes under:
 
@@ -14,12 +15,29 @@ Release verification rejects classes under:
 - `org/mariadb/jdbc/`
 - `com/google/protobuf/`
 
-SQLite JDBC remains bundled and must retain its Apache-2.0/BSD notices. VaultAPI and Paper API remain
-server-provided. See `THIRD_PARTY_NOTICES.md` for the release notice inventory.
+SQLite JDBC 3.46.1.3 remains bundled. Its Apache-2.0, BSD-2-Clause, and SQLite
+public-domain notices are documented in `THIRD_PARTY_NOTICES.md` and copied
+under `third-party-licenses/` and `META-INF/licenses/`.
 
-## License decision impact
+VaultAPI and Paper API remain server-provided. Floodgate remains an optional
+reflective integration without a declared or bundled dependency.
 
-The previous MySQL Connector/J GPL/FOSS-exception blocker has been removed from the distributed
-artifact. This clears the JDBC dependency obstacle identified for SodaEconomy's planned
-source-available licensing model. The final project license still requires a separate explicit
-maintainer decision and legal review where appropriate.
+## Final project license
+
+SodaEconomy is distributed under the Apache License, Version 2.0, subject to
+the Commons Clause License Condition v1.0 and the project-specific express
+permission in `LICENSE`.
+
+The express permission makes clear that monetized Minecraft server operation,
+server ranks, shops, crates, donations, advertising, subscriptions, and
+general hosting with SodaEconomy as one component remain permitted. The
+commercial restriction applies to selling or commercially substituting the
+SodaEconomy software itself.
+
+See:
+
+- `LICENSE`
+- `LICENSE-FAQ.md`
+- `TRADEMARKS.md`
+- `THIRD_PARTY_NOTICES.md`
+- `docs/licensing-release-audit.md`

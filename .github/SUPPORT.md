@@ -12,6 +12,8 @@ Start with:
 - [Player identity and Floodgate](../docs/player-identities.md)
 - [Vault integration](../docs/vault-integration.md)
 - [Test environment](../src/test/README.md)
+- [License FAQ](../LICENSE-FAQ.md)
+- [Trademark and naming policy](../TRADEMARKS.md)
 
 ## Questions and setup help
 
@@ -57,3 +59,10 @@ before filing an issue.
 
 SodaEconomy is maintained independently. Support is provided as time permits; opening duplicate issues,
 pinging repeatedly, or demanding deadlines does not speed up a response.
+
+## Licensing and branding questions
+
+Read `LICENSE`, `LICENSE-FAQ.md`, and `TRADEMARKS.md` before opening a
+question. Public discussions may clarify project policy but cannot grant an
+exception to the license. Requests for commercial permission must receive
+express written authorization from the Licensor.

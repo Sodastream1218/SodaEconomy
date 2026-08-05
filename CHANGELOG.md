@@ -7,26 +7,23 @@ The project follows Semantic Versioning for public releases and uses prerelease 
 
 ## [Unreleased]
 
-### Changed
-
-- Replaced the embedded MySQL Connector/J with Paper-provided MariaDB Connector/J 3.5.9 while preserving the existing MYSQL configuration, schema and transaction behavior.
-- Added identical CI integration coverage for MySQL 8.4 and MariaDB 11.8 LTS.
-
 ### Added
 
-- Initial public repository infrastructure and maintainer documentation.
+- Added the final SodaEconomy source-available license package based on Apache
+  License 2.0 with Commons Clause License Condition v1.0.
+- Added a license FAQ, trademark and naming policy, top-level NOTICE, expanded
+  third-party dependency inventory, embedded JAR notices, and bundled
+  third-party license copies.
+- Added explicit contribution-licensing and contributor-rights terms without
+  introducing a separate CLA.
 
 ### Changed
 
-- None.
-
-### Fixed
-
-- None.
-
-### Security
-
-- None.
+- Replaced the embedded MySQL Connector/J with Paper-provided MariaDB
+  Connector/J 3.5.9 while preserving the existing MYSQL configuration, schema,
+  and transaction behavior.
+- Added identical CI integration coverage for MySQL 8.4 and MariaDB 11.8 LTS.
+- Expanded public repository infrastructure and maintainer documentation.
 
 <!--
 Release template:

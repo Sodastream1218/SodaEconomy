@@ -11,3 +11,13 @@
 /pom.xml @Sodastream1218
 /build.gradle.kts @Sodastream1218
 /.github/workflows/ @Sodastream1218
+
+# Licensing, attribution, and contribution policy.
+/LICENSE @Sodastream1218
+/NOTICE @Sodastream1218
+/LICENSE-FAQ.md @Sodastream1218
+/TRADEMARKS.md @Sodastream1218
+/THIRD_PARTY_NOTICES.md @Sodastream1218
+/CONTRIBUTING.md @Sodastream1218
+/third-party-licenses/ @Sodastream1218
+/src/main/resources/META-INF/ @Sodastream1218

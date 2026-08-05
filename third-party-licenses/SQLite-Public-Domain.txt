@@ -1,0 +1,9 @@
+SQLite Public Domain Notice
+
+The SQLite project states that all of the code and documentation in SQLite
+have been dedicated to the public domain by the authors. Where a jurisdiction
+does not recognize public-domain dedication, the SQLite project provides its
+own fallback blessing.
+
+This notice is informational. Refer to the SQLite project's official
+copyright and public-domain documentation for the authoritative statement.
