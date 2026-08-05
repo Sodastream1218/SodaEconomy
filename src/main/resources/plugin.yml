@@ -1,0 +1,61 @@
+name: SodaEconomy
+version: 1.0.0
+main: de.sodaeconomy.SodaEconomy
+api-version: 1.20
+author: Sodastreamexpres
+description: Professionelles Economy-System mit Transaktionsjournal, Storage-Migrationen und auditierbarer API.
+softdepend: [Vault, floodgate]
+
+commands:
+  balance:
+    description: Zeigt dein aktuelles Guthaben an
+    usage: /balance
+  topbalance:
+    description: Zeigt die reichsten Spieler an
+    usage: /topbalance
+    permission: sodaeconomy.topbalance
+  pay:
+    description: Überweise einem anderen Spieler Geld
+    usage: /pay <Spieler> <Betrag>
+  eco:
+    description: Economy administration, transaction history, audit, and statistics
+    usage: /eco <history|transaction|rollback|audit|stats|reload|set|give|remove|reset|balance|payall|multipay>
+  bank:
+    description: Bank-Befehle (/bank balance, deposit, withdraw, setbalance)
+    usage: /bank <balance|deposit|withdraw|setbalance>
+    permission: sodaeconomy.bank.use
+
+permissions:
+  sodaeconomy.admin:
+    description: Erlaubt die Nutzung aller Admin Economy Befehle
+    default: op
+  sodaeconomy.admin.reload:
+    description: Erlaubt das sichere Neuladen von Sprache, Sprachdateien, Prefix, Bestenliste und Währungsanzeige
+    default: op
+  sodaeconomy.history.self:
+    description: Allows viewing personal transaction history
+    default: true
+  sodaeconomy.history.others:
+    description: Allows viewing other players' transaction history
+    default: op
+  sodaeconomy.transaction:
+    description: Allows viewing transaction details
+    default: op
+  sodaeconomy.rollback:
+    description: Allows rolling back eligible transactions
+    default: op
+  sodaeconomy.audit:
+    description: Allows viewing player transaction audit summaries
+    default: op
+  sodaeconomy.stats:
+    description: Allows viewing economy statistics
+    default: op
+  sodaeconomy.topbalance:
+    description: Erlaubt die Nutzung von /topbalance
+    default: true
+  sodaeconomy.bank.use:
+    description: Erlaubt die Nutzung der Bankbefehle
+    default: true
+  sodaeconomy.bank.admin:
+    description: Erlaubt die Nutzung von /bank setbalance
+    default: op

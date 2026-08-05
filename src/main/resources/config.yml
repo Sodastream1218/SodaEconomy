@@ -1,0 +1,287 @@
+# =====================================================================================================
+#                                ⚡ SodaEconomy - Plugin-Configuration ⚡
+# =====================================================================================================
+# -----------------------------------------------------------------------------------------------------
+# This plugin manages your server's in-game economy. Here you can customize all aspects:
+# storage, language, general economy, currency, banking system, transaction, debugging, and more!
+# -----------------------------------------------------------------------------------------------------
+# =====================================================================================================
+
+
+# =====================================================================================================
+#                                         --- Storage Settings ---
+# =====================================================================================================
+
+# Supported storage systems:
+#   ➤ SQLITE  - Local database file (recommended for small/medium servers)
+#   ➤ YAML    - Readable files in the plugin folder (easy, but slow with many players)
+#   ➤ MYSQL   - External database (ideal for large networks or multiple servers)
+
+#   Data migration:
+#   If you change the storage type (e.g., from SQLITE → YAML or YAML → MYSQL),
+#   existing data is transferred only after the target storage has been connected,
+#   initialized, and verified successfully. Existing target data is never merged.
+
+#   The last used storage type is stored in the file:
+#   plugins/SodaEconomy/last-storage-type.txt
+#   You don't have to change ANYTHING there manually!
+#   This marker records the last successfully active storage. The configured type above
+#   is always the requested storage for the next startup.
+
+#   IMPORTANT NOTE: It is recommended to create a backup of
+#   the current data storage system before any data migration!
+
+storage:
+
+  # Storage type: Choose between SQLITE, YAML or MYSQL
+  # Default value: SQLITE
+  type: SQLITE
+
+  # These values are required only when type is MYSQL. The plugin validates every
+  # required value before it attempts a connection or a migration. Leave the type
+  # as SQLITE or YAML until the MySQL server and its credentials are ready.
+  mysql:
+    # Required and must not be empty when MYSQL is selected.
+    host: localhost
+    # Required integer from 1 to 65535 when MYSQL is selected.
+    port: 3306
+    # Required and must not be empty when MYSQL is selected.
+    database: sodaeconomy
+    # Required and must not be empty when MYSQL is selected.
+    user: root
+    # Required and must not be empty when MYSQL is selected.
+    password: ""
+
+    # Advanced parameters (optional)
+    params:
+      # Automatic reconnect can hide an unknown transaction outcome after a network failure.
+      useSSL: false
+      autoReconnect: false
+      allowPublicKeyRetrieval: true
+      connectTimeout: 5000
+      socketTimeout: 30000
+      tcpKeepAlive: true
+
+  migration:
+    # Safety confirmation for MYSQL -> YAML/SQLITE migrations. Keep this false unless exactly one
+    # server uses the MySQL database and every other network instance is stopped.
+    confirm-single-server-mysql: false
+
+    # Reads the source snapshot and logs wallet/bank/journal counts without importing data or
+    # changing last-storage-type.txt. Useful before a planned storage switch.
+    dry-run: false
+
+
+# =====================================================================================================
+#                                         --- Language Settings ---
+# =====================================================================================================
+
+# Defines the language the plugin should use for in-game messages.
+# "EN" uses the default English messages included in the plugin.
+# Changing this value is safe at runtime with /eco reload. The command also reloads the active
+# messages_<language>.yml file from the language folder without restarting databases or services.
+
+# Available Languages: English = "EN", German = "DE", Spanish = "ES"
+
+language: "EN"
+
+# Only language, prefix.enabled, prefix.full_prefix, leaderboard and currency display values can
+# be reloaded safely with /eco reload. All other configuration values still require a complete
+# server restart.
+prefix:
+
+  enabled: true
+
+  full_prefix: "§8[§bSodaEconomy§8] §r"
+
+
+# =====================================================================================================
+#                                         --- General Economy Settings ---
+# =====================================================================================================
+
+# The starting balance a new player receives when they join the server for the first time.
+# Default value: 1000
+balance: 1000
+
+# The maximum balance a player can have in their account.
+# Set this value to -1 or a very high number if there should be no limit.
+# Default value: 100000
+max_balance: 100000
+
+
+# The top X players sorted by their account balance.
+leaderboard:
+
+  # Activates the command: /topbalance
+  # Default value: true
+  enabled: true
+
+  # Number of players displayed.
+  # Default value: 10
+  top-entries: 10
+
+  # Maximum value accepted as an optional /topbalance argument.
+  # Default value: 50
+  max-entries: 50
+
+# These three leaderboard values can be reloaded safely with /eco reload.
+
+
+# =====================================================================================================
+#                                         --- Currency Settings ---
+# =====================================================================================================
+
+# Configuration options for the currency. Both values can be reloaded safely with /eco reload.
+
+currency:
+
+  # The symbol or name that is displayed before or after money amounts in the game.
+  # For example: "$", "Coins", "Tokens", "€ " (with a space at the end).
+  # Default value: "$"
+  symbol: "$"
+
+  # Enables or disables displaying the symbol or name of the currency after the amount of money.
+  # If disabled, the symbol or name of the currency will be displayed before the amount of money.
+  # Default value: false
+  display_after_amount: false
+
+# =====================================================================================================
+#                                         --- Optional Integrations ---
+# =====================================================================================================
+
+integrations:
+  vault:
+    # Registers SodaEconomy as Vault's economy provider when Vault is installed.
+    # Startup-only: changes require a complete server restart and are not applied by /eco reload.
+    enabled: true
+
+    # Maximum time a Vault call waits while it is still safely cancellable before execution.
+    # If a durable commit has already started, SodaEconomy waits for the definitive result rather
+    # than returning a false failure which could later become a ghost transaction.
+    operation-timeout-millis: 3000
+
+    # Logs a rate-limited warning when a synchronous Vault call takes at least this long.
+    # Set to 0 to disable slow-call warnings.
+    warn-after-millis: 100
+
+
+# =====================================================================================================
+#                                         --- Banking System Settings ---
+# =====================================================================================================
+
+# Configuration options for the integrated banking system.
+
+banking:
+  # Enables or disables the entire banking system in the plugin.
+  # If enabled, players can have bank accounts and earn interest.
+  # Possible values: true (enabled) or false (disabled)
+  # Default value: false
+  enabled: false
+
+  # Enables or disables the interest feature for bank balances.
+  # This option only has an effect if "banking.enabled" is set to "true".
+  # Possible values: true (enabled) or false (disabled)
+  # Default value: false
+  interest_enabled: false
+
+  # The interest rate that is applied to bank balances.
+  # This value is specified as a decimal (e.g., 0.05 for 5%).
+  # This option only has an effect if "banking.enabled" and "banking.interest_enabled" are set to "true".
+  # Default value: 0.05
+  interest_rate: 0.05
+
+  # The interval in minutes at which interest is paid out to bank balances,
+  # if "banking.enabled" and "banking.interest_enabled" are enabled.
+  # Default value: 60 (minutes)
+  interest_interval: 60
+
+  # Maximum interest credited per account and interval. 0 disables the cap.
+  max_interest_per_account: 0.0
+
+
+# =====================================================================================================
+#                                    --- Transaction History ---
+# =====================================================================================================
+
+# Number of entries shown per page by /eco history. Valid values are 1 to 100.
+# Default value: 10
+transactions:
+  history-page-size: 10
+
+
+# =====================================================================================================
+#                                   --- Asynchronous Persistence ---
+# =====================================================================================================
+
+# Keeps wallet and bank balances immediately available in memory while one ordered background
+# worker writes the corresponding atomic transactions to a local YAML or SQLite backend.
+# MySQL is always database-authoritative and is not wrapped by this local write-behind queue.
+# The queue is bounded, stops accepting new mutations while persistence is unavailable, and is
+# drained up to the configured shutdown timeout during a normal server shutdown.
+persistence:
+  async:
+    # Disable only for diagnostics or when another plugin requires fully synchronous storage calls.
+    # Default value: true
+    enabled: true
+
+    # Retry delay after a transient storage failure. The delay increases up to the configured maximum.
+    # Default value: 100 (milliseconds)
+    initial_retry_delay_millis: 100
+
+    # Maximum retry delay for a failed queued write.
+    # Default value: 5000 (milliseconds)
+    maximum_retry_delay_millis: 5000
+
+    # Interval for shutdown warnings while the plugin safely drains queued writes.
+    # Default value: 5 (seconds)
+    shutdown_warning_interval_seconds: 5
+
+    # Maximum number of accepted local writes that may wait for YAML or SQLite persistence.
+    # New economy mutations are rejected before their in-memory state changes once this limit is reached.
+    # Default value: 10000
+    queue_capacity: 10000
+
+    # Queue utilization at which a rate-limited administrator warning is logged.
+    # Valid values: 1 to 100. Default value: 80 (percent)
+    warning_threshold_percent: 80
+
+    # Number of immediate retries for a transient local storage failure before the queue pauses.
+    # A paused queue rejects new mutations and probes the storage at the configured recovery interval.
+    # Default value: 8
+    maximum_retry_attempts: 8
+
+    # Delay between recovery probes after local persistence has been paused.
+    # Default value: 30 (seconds)
+    recovery_probe_interval_seconds: 30
+
+    # Maximum time spent draining local queued writes during plugin shutdown.
+    # If the backend remains unavailable, shutdown continues with a clear severe log entry.
+    # Default value: 30 (seconds)
+    shutdown_timeout_seconds: 30
+
+
+# =====================================================================================================
+#                                         --- Debugging Settings ---
+# =====================================================================================================
+
+# Enable detailed debug output for different areas of the plugin.
+# Set the following options to "true" to enable debugging for the respective areas.
+# Default value for all options is "false".
+
+debug:
+  storage: false          # Enables debug output for storage-related operations.
+  commands: false         # Enables debug output for command execution.
+  banking: false          # Enables debug output for the banking system.
+  integrations: false     # Enables detailed logging for optional integrations such as Vault.
+
+
+####################################################################################
+# ⚠️ NOTES
+####################################################################################
+# - Restart the plugin or server after changing configuration values.
+# - When using MySQL, ensure that the database exists and is reachable.
+# - last-storage-type.txt records the last successfully active storage; do not edit it manually.
+# - If MYSQL settings are incomplete, the plugin can safely return to the recorded local storage
+#   and updates storage.type. It never falls back automatically for a reachable-but-temporarily
+#   unavailable MySQL server, because that could create divergent data.
+####################################################################################

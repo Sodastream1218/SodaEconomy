@@ -1,0 +1,215 @@
+# ========================================
+# SodaEconomy - Archivo de idioma español
+# ========================================
+# Marcadores de posición disponibles:
+#   {player}, {target}, {amount}, {balance}, {bank}, {reason},
+#   {position}, {count}, {top}, {playerCount}, {totalMoney}, etc.
+# El prefijo se configura por separado en la config.yml bajo "prefix".
+# ========================================
+
+# --- Mensajes generales ---
+no-permission: "§c¡No tienes permiso para usar este comando!"
+only-players: "§c¡Solo los jugadores pueden usar este comando!"
+player-not-online: "§cEl jugador '{player}' no está en línea."
+player-not-known: "§cEl jugador '{player}' aún no es conocido por este servidor o red."
+invalid-amount: "§c¡Introduce una cantidad válida!"
+amount-must-be-positive: "§c¡La cantidad debe ser mayor que cero!"
+not-enough-money: "§c¡No tienes suficiente dinero!"
+not-enough-money-target: "§c¡El jugador objetivo no tiene suficiente dinero!"
+target-max-balance: "§c¡El saldo de {player} no puede superar el máximo permitido!"
+unknown-subcommand: "§cSubcomando desconocido. Escribe /eco para obtener ayuda."
+leaderboard-disabled: "§cLa clasificación está desactivada en este servidor."
+banking-disabled: "§cEl sistema bancario está desactivado en este servidor."
+
+transaction-failed: "§cNo se pudo completar la transacción. Vuelve a intentarlo más tarde."
+
+# --- Comando /balance ---
+balance-display: "§7Tu saldo actual es: §a{balance}"
+
+# --- Comando /pay ---
+pay-usage: "§7Uso: /pay <jugador> <cantidad>"
+pay-self: "§c¡No puedes enviarte dinero a ti mismo!"
+pay-success-sender: "§aHas enviado §f{amount} §aa §f{player}."
+pay-success-target: "§aHas recibido §f{amount} §ade §f{player}."
+
+# --- Comando /bank ---
+bank-commands-header: "§7Comandos bancarios disponibles:"
+bank-command-balance: "§b/bank balance §7- Muestra tu saldo bancario (o el de otro jugador)"
+bank-command-deposit: "§b/bank deposit <cantidad> §7- Deposita dinero en tu cuenta bancaria"
+bank-command-withdraw: "§b/bank withdraw <cantidad> §7- Retira dinero de tu cuenta bancaria"
+bank-command-setbalance: "§b/bank setbalance <jugador> <cantidad> §7- (Admin) Establece el saldo bancario de un jugador"
+
+bank-balance-only-player: "§c¡Solo los jugadores pueden consultar su saldo bancario!"
+bank-balance-display: "§7Saldo bancario de {player}: §a{balance}"
+
+bank-deposit-only-player: "§c¡Solo los jugadores pueden depositar dinero!"
+bank-deposit-usage: "§7Uso: /bank deposit <cantidad>"
+bank-deposit-not-enough: "§c¡No tienes suficiente dinero en tu cartera!"
+bank-deposit-success: "§aHas depositado §f{amount} §aen tu cuenta bancaria."
+
+bank-withdraw-only-player: "§c¡Solo los jugadores pueden retirar dinero!"
+bank-withdraw-usage: "§7Uso: /bank withdraw <cantidad>"
+bank-withdraw-not-enough: "§c¡No tienes suficiente dinero en tu cuenta bancaria!"
+bank-withdraw-success: "§aHas retirado §f{amount} §ade tu cuenta bancaria."
+
+bank-setbalance-usage: "§7Uso: /bank setbalance <jugador> <cantidad>"
+bank-setbalance-success: "§aEl saldo bancario de §f{player} §ase ha establecido en §f{amount}."
+
+# --- Comando /eco ---
+eco-help-header: "§7Comandos de economía disponibles:"
+set-player-balance: "§b/eco set <jugador> <cantidad> §7- Establece el saldo de un jugador"
+give-player-money: "§b/eco give <jugador> <cantidad> §7- Da dinero a un jugador"
+remove-player-money: "§b/eco remove <jugador> <cantidad> §7- Quita dinero a un jugador"
+reset-player-balance: "§b/eco reset <jugador> §7- Restablece el saldo de un jugador"
+show-player-balance: "§b/eco balance <jugador> §7- Muestra el saldo de un jugador"
+show-stats: "§b/eco stats [jugador] §7- Muestra las estadísticas de la economía"
+pay-all: "§b/eco payall <cantidad> §7- Da dinero a todos los jugadores en línea"
+multi-pay: "§b/eco multipay <cantidad> <jugador1> <jugador2> ... §7- Paga a varios jugadores"
+show-history: "§b/eco history [página] §7- Muestra tu historial de transacciones"
+show-player-history: "§b/eco history <jugador> [página] §7- Muestra el historial de un jugador"
+show-transaction: "§b/eco transaction <id-de-transacción> §7- Muestra los detalles de una transacción"
+rollback-transaction: "§b/eco rollback <id-de-transacción> §7- Crea una transacción inversa"
+show-audit: "§b/eco audit <jugador> §7- Muestra la auditoría de un jugador"
+
+eco-set-success: "§aEl saldo de §f{player} §ase ha establecido en §f{amount}."
+eco-set-target: "§7Tu saldo ha sido establecido en §a{amount}."
+
+eco-give-success: "§a{player} ha recibido §f{amount}."
+eco-give-target: "§7Has recibido §a{amount} §adel administrador."
+
+eco-remove-success: "§cSe han eliminado §f{amount} §cde §f{player}."
+eco-remove-target: "§cUn administrador ha retirado §f{amount} §cde tu cuenta."
+
+eco-reset-success: "§aEl saldo de §f{player} §aha sido restablecido."
+eco-reset-target: "§cUn administrador ha restablecido tu saldo."
+
+eco-show-balance: "§7Saldo de {player}: §a{balance}"
+
+eco-stats: "§7Jugadores totales: §a{playerCount} §7| Dinero total en circulación: §a{totalMoney}"
+
+eco-payall-success: "§aTodos los jugadores en línea han recibido dinero."
+eco-payall-target: "§aHas recibido §f{amount} §adel administrador."
+
+eco-multipay-success: "§aVarios jugadores han recibido dinero."
+eco-multipay-target: "§aHas recibido §f{amount} §adel administrador."
+
+eco-batch-result: "§eSe completaron {successful} de {total} transacciones."
+
+# --- Libro mayor, auditoría, reversión y estadísticas ---
+eco-stats-usage: "§7Uso: /eco stats [jugador]"
+eco-stats-header: "§bEstadísticas de economía:"
+eco-stats-accounts: "§7Cuentas de cartera: §a{count}"
+eco-stats-total-money: "§7Dinero total en circulación: §a{amount}"
+eco-stats-average-balance: "§7Saldo medio de cartera: §a{amount}"
+eco-stats-richest-player: "§7Jugador más rico: §f{player} §7({amount})"
+eco-stats-transactions: "§7Todas las transacciones: §a{count}"
+eco-stats-largest-transaction: "§7Transacción más grande: §a{amount}"
+eco-stats-transfer-volume: "§7Volumen total de transferencias: §a{amount}"
+eco-stats-total-received: "§7Dinero introducido: §a{amount}"
+eco-stats-total-sent: "§7Dinero retirado: §a{amount}"
+eco-stats-player-header: "§bEstadísticas de economía para §f{player}§b:"
+eco-stats-player-balance: "§7Saldo actual de cartera: §a{amount}"
+
+eco-history-usage: "§7Uso: /eco history <jugador> [página]"
+eco-history-console-usage: "§7Uso desde la consola: /eco history <jugador> [página]"
+eco-history-invalid-page: "§cEl número de página debe ser un número entero positivo."
+eco-history-header: "§bHistorial de transacciones de §f{player} §7(página §f{page}§7):"
+eco-history-empty: "§7No se encontraron transacciones."
+eco-history-entry: "§8#{id} §7| §f{time} §7| §b{type} §7| §a{amount} §7| §f{source} §7→ §f{target} §7| {status} §7| {reason}"
+eco-history-next-page: "§7Hay más entradas disponibles: §b{command}"
+
+eco-transaction-usage: "§7Uso: /eco transaction <id-de-transacción>"
+eco-transaction-invalid-id: "§cEl ID de transacción no es válido."
+eco-transaction-not-found: "§cNo se encontró ninguna transacción con el ID {id}."
+eco-transaction-header: "§bTransacción §f{id}§b:"
+eco-transaction-time: "§7Hora: §f{time}"
+eco-transaction-type: "§7Tipo: §f{type}"
+eco-transaction-status: "§7Estado: {status}"
+eco-transaction-operation: "§7Operación: §f{operation}"
+eco-transaction-amount: "§7Cantidad aplicada: §a{amount} §7(solicitada: §f{requestedAmount}§7)"
+eco-transaction-source: "§7Origen: §f{source}"
+eco-transaction-source-balance: "§7Saldo de origen: §f{before} §7→ §f{after}"
+eco-transaction-target: "§7Destino: §f{target}"
+eco-transaction-target-balance: "§7Saldo de destino: §f{before} §7→ §f{after}"
+eco-transaction-origin: "§7Iniciado por: §f{origin}"
+eco-transaction-reason: "§7Motivo: §f{reason}"
+eco-transaction-metadata: "§7Metadatos: §f{metadata}"
+eco-transaction-reversal: "§7Reversión de: §f{id}"
+eco-transaction-batch: "§7ID de lote: §f{id}"
+eco-transaction-idempotency: "§7Clave de idempotencia: §f{key}"
+eco-transaction-failure: "§7Motivo del fallo: §f{reason}"
+eco-transaction-failure-detail: "§7Detalle del fallo: §f{detail}"
+
+eco-rollback-usage: "§7Uso: /eco rollback <id-de-transacción>"
+eco-rollback-success: "§aLa transacción {id} fue revertida por la transacción {rollbackId}."
+eco-rollback-already-completed: "§cLa transacción {id} ya fue revertida."
+eco-rollback-not-reversible: "§cLa transacción {id} no existe o no se puede revertir."
+eco-rollback-failed: "§cNo se pudo revertir la transacción {id}. No se modificó dinero."
+
+eco-audit-usage: "§7Uso: /eco audit <jugador>"
+eco-audit-header: "§bAuditoría de transacciones de §f{player}§b:"
+eco-audit-transactions: "§7Transacciones: §a{count}"
+eco-audit-received: "§7Total recibido: §a{amount}"
+eco-audit-sent: "§7Total enviado: §a{amount}"
+eco-audit-net: "§7Cambio neto de cartera: §a{amount}"
+eco-audit-largest-received: "§7Mayor cantidad recibida: §a{amount}"
+eco-audit-largest-sent: "§7Mayor cantidad enviada: §a{amount}"
+eco-audit-first: "§7Primera transacción: §f{time}"
+eco-audit-last: "§7Última transacción: §f{time}"
+
+transaction-not-applicable: "N/D"
+transaction-status-success: "§aCORRECTA"
+transaction-status-failed: "§cFALLIDA"
+transaction-status-cancelled: "§eCANCELADA"
+transaction-operation-credit: "Ingreso"
+transaction-operation-debit: "Retiro"
+transaction-operation-transfer: "Transferencia"
+transaction-operation-set: "Establecer saldo"
+transaction-failure-none: "Ninguno"
+transaction-failure-invalid-request: "Solicitud no válida"
+transaction-failure-invalid-amount: "Cantidad no válida"
+transaction-failure-insufficient-funds: "Fondos insuficientes"
+transaction-failure-maximum-balance-exceeded: "Se superó el saldo máximo"
+transaction-failure-account-not-found: "Cuenta no encontrada"
+transaction-failure-duplicate-rollback: "Reversión duplicada"
+transaction-failure-not-reversible: "No reversible"
+transaction-failure-conflict: "Conflicto"
+transaction-failure-storage-failure: "Fallo de almacenamiento"
+transaction-failure-service-stopping: "El servicio se está deteniendo"
+transaction-type-initial-balance: "Saldo inicial"
+transaction-type-legacy-opening-balance: "Saldo inicial heredado"
+transaction-type-player-transfer: "Transferencia de jugador"
+transaction-type-admin-give: "Ingreso de administrador"
+transaction-type-admin-take: "Retiro de administrador"
+transaction-type-admin-set: "Ajuste de administrador"
+transaction-type-admin-reset: "Restablecimiento de administrador"
+transaction-type-api-deposit: "Depósito de API"
+transaction-type-api-withdraw: "Retiro de API"
+transaction-type-api-transfer: "Transferencia de API"
+transaction-type-api-set: "Ajuste de API"
+transaction-type-rollback: "Reversión"
+transaction-type-wallet-to-bank: "Cartera a banco"
+transaction-type-bank-to-wallet: "Banco a cartera"
+
+# --- Comando /topbalance ---
+topbalance-no-entries: "§7No se encontraron saldos."
+topbalance-header: "§bTop {count} jugadores más ricos:"
+topbalance-entry: "§8#{position} §7» §f{player}: §a{balance}"
+
+# --- Language-system fallback ---
+missing-message: "§cFalta el mensaje: {key}"
+
+# Safe runtime configuration reload
+reload-config: "§b/eco reload §7- Recarga de forma segura idioma, archivos de mensajes, prefijo, clasificación y moneda."
+eco-reload-success: "§aLa configuración en tiempo de ejecución y los archivos de idioma se recargaron correctamente. Idioma: {language}. Valores de clasificación: {topEntries}/{maxEntries}."
+eco-reload-failed: "§cLa recarga segura falló. La configuración anterior sigue activa."
+
+# Integración opcional de Vault
+vault-player-not-known: "§cVault no pudo resolver este jugador mediante el registro de jugadores conocidos de SodaEconomy."
+vault-invalid-amount: "§cVault proporcionó una cantidad de dinero no válida."
+vault-insufficient-funds: "§cLa cuenta no tiene suficiente dinero."
+vault-maximum-balance: "§cLa transacción superaría el saldo máximo de la cartera."
+vault-storage-failure: "§cEl almacenamiento de economía no pudo confirmar esta operación de Vault."
+vault-service-stopping: "§cEl servicio de economía se está deteniendo."
+vault-operation-timeout: "§cLa operación de Vault agotó el tiempo antes de que comenzara cualquier cambio de dinero."
+vault-bank-not-supported: "§cLas cuentas de ahorro personales de SodaEconomy no se exponen como bancos de Vault."

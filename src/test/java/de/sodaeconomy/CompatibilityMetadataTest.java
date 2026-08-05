@@ -1,0 +1,102 @@
+package de.sodaeconomy;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import org.junit.jupiter.api.Test;
+
+class CompatibilityMetadataTest {
+
+    private static final Path PROJECT_ROOT = findProjectRoot();
+
+    @Test
+    void mavenCompilerUsesReleaseSeventeenInsteadOfSourceTargetOnly() throws IOException {
+        String pom = Files.readString(PROJECT_ROOT.resolve("pom.xml"));
+
+        assertTrue(pom.contains("<maven.compiler.release>${java.version}</maven.compiler.release>"));
+        assertTrue(pom.contains("<release>${maven.compiler.release}</release>"));
+        assertTrue(!pom.contains("<source>17</source>"),
+                "Maven must use --release 17 so newer JDK APIs are not linked accidentally.");
+        assertTrue(!pom.contains("<target>17</target>"),
+                "Maven must use --release 17 so newer JDK APIs are not linked accidentally.");
+    }
+
+    @Test
+    void gradleCompilerUsesReleaseSeventeen() throws IOException {
+        String gradle = readOptionalBuildFile("build.gradle.kts");
+
+        assertTrue(gradle.contains("options.release.set(17)"),
+                "Gradle must keep Java 17 API compatibility for the released plugin JAR.");
+    }
+
+    @Test
+    void pluginMetadataDeclaresTheModernPaperApiFloor() throws IOException {
+        String pluginYml = Files.readString(PROJECT_ROOT.resolve("src/main/resources/plugin.yml"));
+
+        assertTrue(pluginYml.contains("api-version: 1.20"),
+                "The compatibility baseline is Paper/Purpur 1.20.x; lowering this requires a separate audit.");
+    }
+
+    @Test
+    void floodgateIntegrationRemainsOptionalAndDocumented() throws IOException {
+        String pluginYml = Files.readString(PROJECT_ROOT.resolve("src/main/resources/plugin.yml"));
+        String pom = Files.readString(PROJECT_ROOT.resolve("pom.xml"));
+        String gradle = readOptionalBuildFile("build.gradle.kts");
+
+        assertTrue(pluginYml.contains("softdepend: [Vault, floodgate]"),
+                "Vault and Floodgate must remain optional soft dependencies.");
+        assertTrue(!pom.contains("org.geysermc.floodgate"),
+                "The main Maven build must not introduce a hard Floodgate dependency.");
+        assertTrue(!gradle.contains("org.geysermc.floodgate"),
+                "The main Gradle build must not introduce a hard Floodgate dependency.");
+        assertTrue(Files.isRegularFile(PROJECT_ROOT.resolve("docs/player-identities.md")));
+    }
+
+
+    @Test
+    void vaultIntegrationRemainsOptionalProvidedAndDocumented() throws IOException {
+        String pluginYml = Files.readString(PROJECT_ROOT.resolve("src/main/resources/plugin.yml"));
+        String pom = Files.readString(PROJECT_ROOT.resolve("pom.xml"));
+
+        assertTrue(pluginYml.contains("softdepend: [Vault, floodgate]"));
+        assertTrue(!pluginYml.contains("provides: [Vault]"));
+        assertTrue(pom.contains("<artifactId>VaultAPI</artifactId>"));
+        assertTrue(pom.contains("<scope>provided</scope>"));
+        assertTrue(pom.contains("<artifactId>bukkit</artifactId>"),
+                "VaultAPI's legacy transitive Bukkit artifact must stay excluded.");
+        assertTrue(Files.isRegularFile(PROJECT_ROOT.resolve("docs/vault-integration.md")));
+
+        String buildContracts = Files.readString(PROJECT_ROOT.resolve("docs/build-contracts.md"));
+        assertTrue(buildContracts.contains("VaultAPI"));
+        assertTrue(buildContracts.contains("Maven scope: provided"));
+        assertTrue(buildContracts.contains("Gradle configuration: compileOnly"));
+        assertTrue(buildContracts.contains("Transitive dependencies: disabled"));
+    }
+
+    @Test
+    void compatibilityDocumentationExists() {
+        Path documentation = PROJECT_ROOT.resolve("docs/compatibility.md");
+        assertTrue(Files.isRegularFile(documentation),
+                () -> "Cross-version release decisions must remain documented at " + documentation);
+    }
+
+    private static String readOptionalBuildFile(String fileName) throws IOException {
+        Path path = PROJECT_ROOT.resolve(fileName);
+        return Files.isRegularFile(path) ? Files.readString(path) : "";
+    }
+
+    private static Path findProjectRoot() {
+        Path current = Path.of("").toAbsolutePath().normalize();
+        while (current != null) {
+            if (Files.isRegularFile(current.resolve("pom.xml"))
+                    && Files.isDirectory(current.resolve("src/main/resources"))) {
+                return current;
+            }
+            current = current.getParent();
+        }
+        throw new IllegalStateException("Could not locate the SodaEconomy project root from "
+                + Path.of("").toAbsolutePath().normalize());
+    }
+}
