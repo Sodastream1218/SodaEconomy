@@ -7,6 +7,11 @@ The project follows Semantic Versioning for public releases and uses prerelease 
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed the Gradle test classpath for Vault-facing MockBukkit tests by adding VaultAPI to the test configuration without bundling it into the release JAR.
+- Extended release-JAR verification to reject accidentally shaded Vault API classes.
+
 ### Added
 
 - Added an optional native PlaceholderAPI expansion for high-frequency wallet, bank, total, currency-symbol and leaderboard placeholders.

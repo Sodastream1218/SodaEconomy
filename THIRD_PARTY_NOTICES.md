@@ -64,8 +64,9 @@ JAR.
 - Purpose: optional Vault economy-provider contract
 - License: GNU Lesser General Public License v3.0 or later
   (`LGPL-3.0-or-later`)
-- Distribution: compile-only/provided and not bundled; the installed Vault
-  plugin supplies the API at runtime
+- Distribution: compile-only/provided for production and test classpath only for
+  Vault-facing MockBukkit tests; not bundled; the installed Vault plugin supplies
+  the API at runtime
 
 ### PlaceholderAPI 2.12.3
 
@@ -101,7 +102,7 @@ JAR.
 - License: MIT License
 - Distribution: test only; not bundled
 
-The test suite also resolves Paper API, PlaceholderAPI, and MariaDB Connector/J under the
+The test suite also resolves Paper API, VaultAPI, PlaceholderAPI, and MariaDB Connector/J under the
 versions and licenses listed above.
 
 ## Build tooling included or declared by the repository

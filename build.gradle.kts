@@ -28,6 +28,12 @@ dependencies {
     compileOnly("com.github.MilkBowl:VaultAPI:1.7.1") {
         isTransitive = false
     }
+    // Gradle's test classpath does not inherit compileOnly dependencies. Vault-facing
+    // MockBukkit tests need the Vault API types at compile and runtime, but this
+    // testImplementation entry still does not affect the published plugin JAR.
+    testImplementation("com.github.MilkBowl:VaultAPI:1.7.1") {
+        isTransitive = false
+    }
     implementation("org.xerial:sqlite-jdbc:3.46.1.3")
     // Paper supplies the JDBC driver in production via plugin.yml libraries.
     testRuntimeOnly("org.mariadb.jdbc:mariadb-java-client:3.5.9")
@@ -93,7 +99,7 @@ tasks.assemble {
 
 val verifyNoEmbeddedDatabaseServerDriver by tasks.registering {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Verifies that the release JAR contains neither MySQL nor MariaDB Connector/J classes."
+    description = "Verifies that the release JAR contains no embedded database-server driver or Vault API classes."
     dependsOn(tasks.shadowJar)
 
     doLast {
@@ -102,7 +108,8 @@ val verifyNoEmbeddedDatabaseServerDriver by tasks.registering {
             "com/mysql/",
             "de/sodaeconomy/libs/mysql/",
             "org/mariadb/jdbc/",
-            "com/google/protobuf/"
+            "com/google/protobuf/",
+            "net/milkbowl/vault/"
         )
         // Inspect the archive directly so package entry names are deterministic across Gradle versions.
         ZipFile(releaseJar).use { archive ->
@@ -111,7 +118,7 @@ val verifyNoEmbeddedDatabaseServerDriver by tasks.registering {
                 .filter { entry -> forbiddenPrefixes.any(entry::startsWith) }
                 .toList()
             check(matches.isEmpty()) {
-                "Release JAR contains an embedded database-server JDBC driver: ${matches.joinToString()}"
+                "Release JAR contains an embedded database-server JDBC driver or Vault API classes: ${matches.joinToString()}"
             }
             check(archive.getEntry("META-INF/THIRD_PARTY_NOTICES.md") != null) {
                 "Release JAR does not contain META-INF/THIRD_PARTY_NOTICES.md"

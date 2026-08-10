@@ -59,11 +59,17 @@ class CompatibilityMetadataTest {
     void vaultIntegrationRemainsOptionalProvidedAndDocumented() throws IOException {
         String pluginYml = Files.readString(PROJECT_ROOT.resolve("src/main/resources/plugin.yml"));
         String pom = Files.readString(PROJECT_ROOT.resolve("pom.xml"));
+        String gradle = readOptionalBuildFile("build.gradle.kts");
 
         assertTrue(pluginYml.contains("softdepend: [Vault, floodgate, PlaceholderAPI]"));
         assertTrue(!pluginYml.contains("provides: [Vault]"));
         assertTrue(pom.contains("<artifactId>VaultAPI</artifactId>"));
         assertTrue(pom.contains("<scope>provided</scope>"));
+        assertTrue(gradle.contains("compileOnly(\"com.github.MilkBowl:VaultAPI:1.7.1\")"));
+        assertTrue(gradle.contains("testImplementation(\"com.github.MilkBowl:VaultAPI:1.7.1\")"),
+                "Gradle test compilation must include VaultAPI because test source sets do not inherit compileOnly.");
+        assertTrue(gradle.contains("net/milkbowl/vault/"),
+                "The release-JAR verifier must reject accidentally shaded Vault API classes.");
         assertTrue(pom.contains("<artifactId>bukkit</artifactId>"),
                 "VaultAPI's legacy transitive Bukkit artifact must stay excluded.");
         assertTrue(Files.isRegularFile(PROJECT_ROOT.resolve("docs/vault-integration.md")));
@@ -71,8 +77,9 @@ class CompatibilityMetadataTest {
         String buildContracts = Files.readString(PROJECT_ROOT.resolve("docs/build-contracts.md"));
         assertTrue(buildContracts.contains("VaultAPI"));
         assertTrue(buildContracts.contains("Maven scope: provided"));
-        assertTrue(buildContracts.contains("Gradle configuration: compileOnly"));
-        assertTrue(buildContracts.contains("Transitive dependencies: disabled"));
+        assertTrue(buildContracts.contains("Gradle production configuration: compileOnly"));
+        assertTrue(buildContracts.contains("Gradle test configuration: testImplementation"));
+        assertTrue(buildContracts.contains("Transitive dependencies: disabled for both configurations"));
     }
 
 
@@ -92,6 +99,7 @@ class CompatibilityMetadataTest {
         assertTrue(gradle.contains("me/clip/placeholderapi/"),
                 "The release-JAR verifier must reject accidentally shaded PlaceholderAPI classes.");
         assertTrue(workflow.contains("me/clip/placeholderapi/"));
+        assertTrue(workflow.contains("net/milkbowl/vault/"));
         assertTrue(Files.isRegularFile(PROJECT_ROOT.resolve("docs/placeholderapi-integration.md")));
 
         String bootstrap = Files.readString(PROJECT_ROOT.resolve(

@@ -14,6 +14,7 @@ Release verification rejects classes under:
 - `de/sodaeconomy/libs/mysql/`
 - `org/mariadb/jdbc/`
 - `com/google/protobuf/`
+- `net/milkbowl/vault/`
 
 The separate PlaceholderAPI release check rejects:
 
@@ -23,8 +24,9 @@ SQLite JDBC 3.46.1.3 remains bundled. Its Apache-2.0, BSD-2-Clause, and SQLite
 public-domain notices are documented in `THIRD_PARTY_NOTICES.md` and copied
 under `third-party-licenses/` and `META-INF/licenses/`.
 
-VaultAPI, Paper API, and PlaceholderAPI remain server-provided/compile-only. PlaceholderAPI
-2.12.3 is GPL-3.0 and is not bundled into the release JAR. Floodgate remains an optional
+VaultAPI, Paper API, and PlaceholderAPI remain server-provided/compile-only in production.
+VaultAPI is also present on the Gradle test classpath so Vault-specific tests can compile and run,
+but it is not bundled into the release JAR. PlaceholderAPI 2.12.3 is GPL-3.0 and is not bundled into the release JAR. Floodgate remains an optional
 reflective integration without a declared or bundled dependency.
 
 ## Final project license

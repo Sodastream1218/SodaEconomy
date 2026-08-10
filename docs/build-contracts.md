@@ -11,10 +11,12 @@ transitive dependency into the plugin JAR.
 
 - Dependency: VaultAPI 1.7.1
 - Maven scope: provided
-- Gradle configuration: compileOnly
-- Transitive dependencies: disabled
+- Gradle production configuration: compileOnly
+- Gradle test configuration: testImplementation, because Gradle tests do not inherit compileOnly
+- Transitive dependencies: disabled for both configurations
 - Runtime metadata: `softdepend: [Vault, floodgate, PlaceholderAPI]`
 - Forbidden metadata: `provides: [Vault]`
+- Forbidden release-JAR package: `net/milkbowl/vault/`
 
 Vault remains a service provider integration only. SodaEconomy registers an
 Economy implementation with Bukkit's `ServicesManager` when Vault is present;
