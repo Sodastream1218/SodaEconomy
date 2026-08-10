@@ -13,6 +13,7 @@ import de.sodaeconomy.identity.PlayerIdentityService;
 import de.sodaeconomy.integration.NoopIntegration;
 import de.sodaeconomy.integration.OptionalIntegration;
 import de.sodaeconomy.integration.vault.VaultIntegrationBootstrap;
+import de.sodaeconomy.integration.placeholderapi.PlaceholderApiIntegrationBootstrap;
 import de.sodaeconomy.integration.vault.VaultIntegrationSettings;
 import de.sodaeconomy.storage.ConfigManager;
 import de.sodaeconomy.storage.AsyncWalletTransactionStore;
@@ -45,6 +46,7 @@ public class SodaEconomy extends JavaPlugin {
     private TransactionService transactionService;
     private PlayerIdentityService playerIdentityService;
     private OptionalIntegration vaultIntegration = NoopIntegration.INSTANCE;
+    private OptionalIntegration placeholderApiIntegration = NoopIntegration.INSTANCE;
     private int interestTaskId = -1;
     private final AtomicBoolean warnedEconomyManagerAccess = new AtomicBoolean();
     private final AtomicBoolean warnedStorageManagerAccess = new AtomicBoolean();
@@ -172,6 +174,9 @@ public class SodaEconomy extends JavaPlugin {
                     "[Vault] Invalid Vault integration configuration. SodaEconomy continues without Vault support.",
                     exception);
         }
+
+        placeholderApiIntegration = PlaceholderApiIntegrationBootstrap.initialize(
+                this, transactionService, () -> configManager.getRuntimeSettings(), bankManager != null);
     }
 
     private void initializeBanking(Storage activeStorage) {
@@ -242,6 +247,11 @@ public class SodaEconomy extends JavaPlugin {
                 getLogger().info("[Banking] Interest task stopped.");
             }
             interestTaskId = -1;
+        }
+
+        if (placeholderApiIntegration != null) {
+            placeholderApiIntegration.close();
+            placeholderApiIntegration = NoopIntegration.INSTANCE;
         }
 
         if (vaultIntegration != null) {

@@ -3,6 +3,7 @@ package de.sodaeconomy.commands;
 import de.sodaeconomy.EconomyManager;
 import de.sodaeconomy.SodaEconomy;
 import de.sodaeconomy.identity.PlayerIdentityApi;
+import de.sodaeconomy.leaderboard.LeaderboardRanking;
 import de.sodaeconomy.storage.ConfigManager;
 import de.sodaeconomy.storage.RuntimeConfigSnapshot;
 import de.sodaeconomy.transaction.TransactionService;
@@ -17,7 +18,7 @@ import java.util.UUID;
 
 public class TopBalanceCommand implements CommandExecutor {
 
-    private record LeaderboardView(List<Map.Entry<UUID, Double>> balances, Map<UUID, String> displayNames) { }
+    private record LeaderboardView(List<Map.Entry<UUID, Long>> balances, Map<UUID, String> displayNames) { }
 
     private final EconomyManager economyManager;
     private final SodaEconomy plugin;
@@ -83,9 +84,8 @@ public class TopBalanceCommand implements CommandExecutor {
         }
         final int requestedLimit = limit;
 
-        transactionService.getAllBalancesAsynchronously()
-                .thenApply(balances -> balances.entrySet().stream()
-                        .sorted(Map.Entry.<UUID, Double>comparingByValue().reversed())
+        transactionService.getStoredBalancesMinorUnits()
+                .thenApply(balances -> LeaderboardRanking.sortedEntries(balances).stream()
                         .limit(requestedLimit)
                         .toList())
                 .thenCompose(sorted -> playerIdentityApi.resolveDisplayNames(
@@ -113,11 +113,11 @@ public class TopBalanceCommand implements CommandExecutor {
 
         sendMessage(sender, "topbalance-header", "count", view.balances().size());
         int position = 1;
-        for (Map.Entry<UUID, Double> entry : view.balances()) {
+        for (Map.Entry<UUID, Long> entry : view.balances()) {
             String playerName = view.displayNames().getOrDefault(entry.getKey(),
                     playerIdentityApi.cachedDisplayName(entry.getKey()));
             sendMessage(sender, "topbalance-entry", "position", position++, "player", playerName,
-                    "balance", economyManager.formatCurrency(entry.getValue()));
+                    "balance", economyManager.formatCurrencyMinor(entry.getValue()));
         }
     }
 

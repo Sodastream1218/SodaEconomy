@@ -13,12 +13,29 @@ transitive dependency into the plugin JAR.
 - Maven scope: provided
 - Gradle configuration: compileOnly
 - Transitive dependencies: disabled
-- Runtime metadata: `softdepend: [Vault, floodgate]`
+- Runtime metadata: `softdepend: [Vault, floodgate, PlaceholderAPI]`
 - Forbidden metadata: `provides: [Vault]`
 
 Vault remains a service provider integration only. SodaEconomy registers an
 Economy implementation with Bukkit's `ServicesManager` when Vault is present;
 it does not replace the Vault plugin itself.
+
+## PlaceholderAPI
+
+PlaceholderAPI support is an optional internal expansion. SodaEconomy must load and run without
+PlaceholderAPI and must never shade PlaceholderAPI classes into the release JAR.
+
+- Dependency: PlaceholderAPI 2.12.3
+- Maven scope: provided
+- Gradle configuration: compileOnly
+- Repository: `https://repo.helpch.at/releases/`
+- Runtime metadata: `softdepend: [Vault, floodgate, PlaceholderAPI]`
+- Expansion identifier: `sodaeconomy`
+- Forbidden release-JAR package: `me/clip/placeholderapi/`
+
+The PlaceholderAPI-specific `PlaceholderExpansion` subclass is isolated behind a bootstrap class
+that contains no PlaceholderAPI type in its own signature. The expansion is loaded only after the
+server confirms PlaceholderAPI is enabled.
 
 ## JDBC driver
 

@@ -42,6 +42,7 @@ body:
       label: Active integrations
       options:
         - label: Vault
+        - label: PlaceholderAPI
         - label: Floodgate / Geyser
         - label: Multi-server MySQL setup
 

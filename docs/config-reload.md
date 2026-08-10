@@ -57,6 +57,9 @@ The command never changes or restarts:
   from the current runtime config snapshot for every future formatted message.
 - `EconomyManager` reads currency settings from the same snapshot for every future amount format.
 - `TopBalanceCommand` reads enabled/default/maximum leaderboard values when each command starts.
+- The optional PlaceholderAPI resolver reads the same current runtime snapshot for every
+  configuration-sensitive resolution. Currency display and leaderboard enable/maximum changes
+  therefore require no PlaceholderAPI reload; raw cached balances remain unchanged.
 
 Editing `plugins/SodaEconomy/language/messages_<code>.yml` and then running `/eco reload` updates
 future messages immediately when the file is valid. Existing already-created Adventure/Text

@@ -72,9 +72,10 @@ The smoke test for every line must cover:
 
 1. Server startup with a fresh `plugins/SodaEconomy` folder.
 2. `/balance`, `/pay`, `/topbalance`, `/bank`, `/eco give`, `/eco remove`, `/eco reload`.
-3. Storage restart test for YAML and SQLite.
-4. MYSQL storage startup and one transaction against an isolated MySQL or MariaDB database.
-5. Clean shutdown without persistence warnings.
+3. Startup with PlaceholderAPI absent, plus placeholder resolution with PlaceholderAPI installed where the target supports it.
+4. Storage restart test for YAML and SQLite.
+5. MYSQL storage startup and one transaction against an isolated MySQL or MariaDB database.
+6. Clean shutdown without persistence warnings.
 
 ## MySQL network verification
 
@@ -113,7 +114,15 @@ Floodgate API data to the backend if `BEDROCK` classification is required there.
 
 ## Optional integrations
 
-Vault and Floodgate remain optional soft dependencies. The released JAR does not shade VaultAPI and
-loads Vault-specific provider classes only after the Vault plugin is detected. Cross-version smoke
-tests should therefore cover both startup without Vault and provider discovery with the current
-Vault server plugin.
+Vault, Floodgate, and PlaceholderAPI remain optional soft dependencies. The released JAR does not
+shade VaultAPI or PlaceholderAPI. Their implementation-specific classes are isolated behind runtime
+detection so SodaEconomy can start with either integration absent.
+
+SodaEconomy compiles its internal placeholder expansion against PlaceholderAPI 2.12.3 while using
+the long-standing `PlaceholderExpansion` contract. Cross-version smoke tests should cover startup
+without PlaceholderAPI and, when it is installed, at least `%sodaeconomy_balance%`,
+`%sodaeconomy_balance_formatted%`, `%sodaeconomy_currency_symbol%`, and
+`%sodaeconomy_baltop_position%`, including a successful `/eco reload` without `/papi reload`.
+
+Vault smoke tests should continue to cover both startup without Vault and provider discovery with
+the current Vault server plugin.

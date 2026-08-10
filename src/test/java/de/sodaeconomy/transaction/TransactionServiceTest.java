@@ -241,6 +241,21 @@ class TransactionServiceTest {
     }
 
     @Test
+    void exposesImmutableExactBalanceSnapshotsForReadOnlyIntegrations() throws Exception {
+        UUID playerId = UUID.randomUUID();
+        setBalance(playerId, 123.45D);
+        storage.setBankBalance(playerId, 67.89D);
+
+        Map<UUID, Long> wallets = transactions.getStoredBalancesMinorUnits().get(5L, TimeUnit.SECONDS);
+        Map<UUID, Long> banks = transactions.getStoredBankBalancesMinorUnits().get(5L, TimeUnit.SECONDS);
+
+        assertEquals(12_345L, wallets.get(playerId));
+        assertEquals(6_789L, banks.get(playerId));
+        assertThrows(UnsupportedOperationException.class, () -> wallets.put(UUID.randomUUID(), 1L));
+        assertThrows(UnsupportedOperationException.class, () -> banks.put(UUID.randomUUID(), 1L));
+    }
+
+    @Test
     void rejectsAuditTypesThatDoNotDescribeTheRequestedOperation() throws Exception {
         UUID playerId = UUID.randomUUID();
 

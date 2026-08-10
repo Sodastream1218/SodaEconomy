@@ -338,6 +338,36 @@ public final class TransactionService implements EconomyTransactionApi, AutoClos
         });
     }
 
+    @Override
+    public CompletableFuture<Map<UUID, Long>> getStoredBalancesMinorUnits() {
+        return submitAsync(() -> {
+            transactionLock.lock();
+            try {
+                return acceptingRequests.get() ? Map.copyOf(storage.getAllBalanceMinorUnits()) : Map.of();
+            } catch (Exception exception) {
+                logStorageFailure("read exact wallet balance snapshot", exception);
+                return Map.of();
+            } finally {
+                transactionLock.unlock();
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<Map<UUID, Long>> getStoredBankBalancesMinorUnits() {
+        return submitAsync(() -> {
+            transactionLock.lock();
+            try {
+                return acceptingRequests.get() ? Map.copyOf(storage.getAllBankBalanceMinorUnits()) : Map.of();
+            } catch (Exception exception) {
+                logStorageFailure("read exact bank balance snapshot", exception);
+                return Map.of();
+            } finally {
+                transactionLock.unlock();
+            }
+        });
+    }
+
     /** Queues a built-in credit without exposing the command origin through the public API. */
     public CompletableFuture<TransactionResult> depositAsynchronously(UUID targetPlayerId, double amount,
                                                                         TransactionType type, TransactionOrigin origin,

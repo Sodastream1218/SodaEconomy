@@ -15,11 +15,16 @@ Release verification rejects classes under:
 - `org/mariadb/jdbc/`
 - `com/google/protobuf/`
 
+The separate PlaceholderAPI release check rejects:
+
+- `me/clip/placeholderapi/`
+
 SQLite JDBC 3.46.1.3 remains bundled. Its Apache-2.0, BSD-2-Clause, and SQLite
 public-domain notices are documented in `THIRD_PARTY_NOTICES.md` and copied
 under `third-party-licenses/` and `META-INF/licenses/`.
 
-VaultAPI and Paper API remain server-provided. Floodgate remains an optional
+VaultAPI, Paper API, and PlaceholderAPI remain server-provided/compile-only. PlaceholderAPI
+2.12.3 is GPL-3.0 and is not bundled into the release JAR. Floodgate remains an optional
 reflective integration without a declared or bundled dependency.
 
 ## Final project license

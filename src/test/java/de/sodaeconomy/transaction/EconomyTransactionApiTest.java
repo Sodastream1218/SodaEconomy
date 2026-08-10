@@ -55,6 +55,19 @@ class EconomyTransactionApiTest {
     }
 
     @Test
+    void compatibilityDefaultsMakeUnsupportedExactSnapshotsExplicit() {
+        RecordingApi api = new RecordingApi();
+
+        CompletionException wallets = assertThrows(CompletionException.class,
+                () -> api.getStoredBalancesMinorUnits().join());
+        CompletionException banks = assertThrows(CompletionException.class,
+                () -> api.getStoredBankBalancesMinorUnits().join());
+
+        assertInstanceOf(UnsupportedOperationException.class, wallets.getCause());
+        assertInstanceOf(UnsupportedOperationException.class, banks.getCause());
+    }
+
+    @Test
     void transactionRequestOptionsDefensivelyCopyMetadataAndNormalizeIdempotencyKeys() {
         Map<String, String> mutableMetadata = new java.util.LinkedHashMap<>();
         mutableMetadata.put("source", "quest");

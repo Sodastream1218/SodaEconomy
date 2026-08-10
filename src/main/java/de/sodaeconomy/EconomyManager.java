@@ -8,7 +8,6 @@ import de.sodaeconomy.storage.WalletTransactionStore;
 import de.sodaeconomy.transaction.TransactionOrigin;
 import de.sodaeconomy.transaction.TransactionService;
 import de.sodaeconomy.transaction.TransactionType;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
@@ -99,11 +98,13 @@ public class EconomyManager {
                 : playerIdentityApi.cachedDisplayName(uuid);
     }
     public String formatCurrency(double amount) {
-        double value = Money.isValid(amount) ? Money.normalize(amount) : 0D;
-        RuntimeConfigSnapshot.CurrencySettings currency = configManager.getRuntimeSettings().currency();
-        return currency.displayAfterAmount()
-                ? String.format(Locale.ROOT, "%.2f%s", value, currency.symbol())
-                : String.format(Locale.ROOT, "%s%.2f", currency.symbol(), value);
+        long minor = Money.isValid(amount) ? Money.toMinorUnits(amount) : 0L;
+        return formatCurrencyMinor(minor);
+    }
+
+    /** Formats exact minor units through the same live currency configuration used by commands. */
+    public String formatCurrencyMinor(long amountMinor) {
+        return CurrencyFormatter.formatMinorUnits(amountMinor, configManager.getRuntimeSettings().currency());
     }
     public double getStartingBalance() { return startingBalance; }
     public double getMaxBalance() { return maxBalance; }

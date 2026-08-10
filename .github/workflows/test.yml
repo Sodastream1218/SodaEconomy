@@ -94,14 +94,14 @@ jobs:
       - name: Run shared JDBC integration suite and build release JAR
         run: ./gradlew --no-daemon mysqlIntegrationTest jacocoTestReport jacocoTestCoverageVerification shadowJar
 
-      - name: Verify release JAR contains no external MySQL/MariaDB driver
+      - name: Verify release JAR contains no bundled external runtime APIs/drivers
         run: |
           set -euo pipefail
           jar_file="$(find build/libs -maxdepth 1 -type f -name 'SodaEconomy-*.jar' ! -name '*-plain.jar' | head -n 1)"
           test -n "$jar_file"
           jar tf "$jar_file" > build/release-jar-contents.txt
-          if grep -Eq '^(com/mysql/|de/sodaeconomy/libs/mysql/|org/mariadb/jdbc/|com/google/protobuf/)' build/release-jar-contents.txt; then
-            echo "Release JAR unexpectedly contains a JDBC driver or MySQL protobuf classes." >&2
-            grep -E '^(com/mysql/|de/sodaeconomy/libs/mysql/|org/mariadb/jdbc/|com/google/protobuf/)' build/release-jar-contents.txt >&2
+          if grep -Eq '^(com/mysql/|de/sodaeconomy/libs/mysql/|org/mariadb/jdbc/|com/google/protobuf/|me/clip/placeholderapi/)' build/release-jar-contents.txt; then
+            echo "Release JAR unexpectedly contains an external JDBC driver, protobuf classes, or PlaceholderAPI classes." >&2
+            grep -E '^(com/mysql/|de/sodaeconomy/libs/mysql/|org/mariadb/jdbc/|com/google/protobuf/|me/clip/placeholderapi/)' build/release-jar-contents.txt >&2
             exit 1
           fi

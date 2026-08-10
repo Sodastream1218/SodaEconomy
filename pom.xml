@@ -19,6 +19,7 @@
         <mockbukkit.version>3.58.1</mockbukkit.version>
         <vaultapi.version>1.7.1</vaultapi.version>
         <mariadb.connector.version>3.5.9</mariadb.connector.version>
+        <placeholderapi.version>2.12.3</placeholderapi.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -28,6 +29,13 @@
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
             <version>1.20.2-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- Optional PlaceholderAPI integration. Compile-time only and never shaded. -->
+        <dependency>
+            <groupId>me.clip</groupId>
+            <artifactId>placeholderapi</artifactId>
+            <version>${placeholderapi.version}</version>
             <scope>provided</scope>
         </dependency>
         <!-- Optional server-provided Vault API. Never shaded into SodaEconomy. -->
@@ -87,6 +95,10 @@
         <repository>
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
+        </repository>
+        <repository>
+            <id>placeholderapi</id>
+            <url>https://repo.helpch.at/releases/</url>
         </repository>
     </repositories>
 

@@ -22,3 +22,12 @@ Then enable GitHub private vulnerability reporting:
 3. Enable **Private vulnerability reporting**
 
 `FUNDING.yml` contains comments only and can remain that way until a real funding platform is chosen.
+
+
+## Optional PlaceholderAPI integration
+
+Install PlaceholderAPI normally on the Paper/Purpur server if scoreboards, TAB lists, holograms,
+chat formatters or GUI plugins should consume SodaEconomy placeholders. SodaEconomy detects it
+automatically; no separate expansion download and no SodaEconomy configuration switch are
+required. Without PlaceholderAPI, SodaEconomy starts and operates normally. See
+`docs/placeholderapi-integration.md` for the supported `%sodaeconomy_...%` contract.

@@ -47,6 +47,26 @@ public interface EconomyTransactionApi {
     }
 
     /**
+     * Returns an exact, immutable snapshot of stored wallet balances in minor units. This is a
+     * read-only presentation/integration surface and must never create accounts. Implementations
+     * should perform persistent I/O asynchronously.
+     */
+    default CompletableFuture<Map<UUID, Long>> getStoredBalancesMinorUnits() {
+        return CompletableFuture.failedFuture(new UnsupportedOperationException(
+                "Exact stored wallet snapshots are not supported by this EconomyTransactionApi implementation"));
+    }
+
+    /**
+     * Returns an exact, immutable snapshot of stored bank balances in minor units. Missing bank
+     * accounts are represented by absence from the returned map. Implementations should perform
+     * persistent I/O asynchronously.
+     */
+    default CompletableFuture<Map<UUID, Long>> getStoredBankBalancesMinorUnits() {
+        return CompletableFuture.failedFuture(new UnsupportedOperationException(
+                "Exact stored bank snapshots are not supported by this EconomyTransactionApi implementation"));
+    }
+
+    /**
      * Convenience API for an external wallet credit. It always uses
      * {@link TransactionType#API_DEPOSIT}; integrations cannot select an administrator or player
      * transaction type through this overload.

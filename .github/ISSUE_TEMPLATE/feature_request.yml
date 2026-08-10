@@ -37,6 +37,7 @@ body:
         - Commands
         - API
         - Vault
+        - PlaceholderAPI
         - Floodgate / Geyser
         - Configuration
         - Documentation

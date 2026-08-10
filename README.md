@@ -70,7 +70,9 @@ scheduling back to the Paper main thread. `TransactionResult` contains the immut
 committed or persistable failed operation and a machine-readable `TransactionFailureReason`.
 
 `getStoredBalance(UUID)` reads a wallet balance asynchronously without creating an account or
-awarding a starting balance; it returns `0.0` when no account is stored. Use an idempotency key for
+awarding a starting balance; it returns `0.0` when no account is stored. Exact read-only snapshot
+methods expose wallet and bank balances in canonical minor units for high-frequency presentation
+integrations without floating-point conversion. Use an idempotency key for
 operations that may be retried by the calling plugin. The key must identify one logical operation
 and must not be reused for unrelated payments.
 
@@ -92,8 +94,8 @@ collision and proxy-network details.
 
 ## Public API boundary and compatibility
 
-`EconomyTransactionApi` is the only supported integration contract for balance mutations and
-transaction history. `PlayerIdentityApi` is the supported read-only contract for central UUID/name
+`EconomyTransactionApi` is the supported integration contract for balance mutations, exact read-only
+balance snapshots, and transaction history. `PlayerIdentityApi` is the supported read-only contract for central UUID/name
 resolution. `SodaEconomy` managers, storage contracts, concrete storage classes, and the concrete
 service implementations are internal runtime infrastructure. They are retained only for legacy
 compatibility during the transition to the public APIs and must not be used by new plugins.
@@ -213,6 +215,22 @@ Administrators can use `/eco reload` (permission `sodaeconomy.admin.reload`) to 
 only the runtime-safe language selection, active language file, prefix, leaderboard and currency-display settings. Storage, database,
 banking, persistence, debug and all other settings remain unchanged until a full server restart. Invalid or malformed configuration never partially replaces the active
 settings. See `docs/config-reload.md` for the exact supported paths and failure behaviour.
+
+## Optional PlaceholderAPI support
+
+When PlaceholderAPI is installed, SodaEconomy automatically registers a native internal expansion
+for the `%sodaeconomy_...%` namespace. PlaceholderAPI remains a soft dependency and is never shaded
+into the SodaEconomy JAR. No separate expansion download or configuration is required.
+
+Core placeholders include wallet, bank and combined balances, formatted/compact balance variants,
+the live currency symbol, and cached leaderboard position. Placeholder callbacks never perform
+synchronous SQL or disk I/O; persistent snapshots are refreshed asynchronously in the background.
+
+Currency formatting and ranking limits use SodaEconomy's current runtime configuration, so a
+successful `/eco reload` is reflected automatically without `/papi reload`. See
+[`docs/placeholderapi-integration.md`](docs/placeholderapi-integration.md) for the complete placeholder
+contract, exact fallback behaviour, data sources, performance characteristics and intentionally
+unsupported placeholders.
 
 ## Optional Vault support
 

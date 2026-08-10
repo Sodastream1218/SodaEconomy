@@ -67,6 +67,15 @@ JAR.
 - Distribution: compile-only/provided and not bundled; the installed Vault
   plugin supplies the API at runtime
 
+### PlaceholderAPI 2.12.3
+
+- Coordinate: `me.clip:placeholderapi:2.12.3`
+- Purpose: optional placeholder expansion API used by SodaEconomy's internal
+  `%sodaeconomy_...%` integration
+- License: GNU General Public License v3.0 (`GPL-3.0`)
+- Distribution: compile-only/provided and not bundled; the installed
+  PlaceholderAPI plugin supplies the API at runtime
+
 ### Floodgate
 
 - Project: GeyserMC Floodgate
@@ -92,7 +101,7 @@ JAR.
 - License: MIT License
 - Distribution: test only; not bundled
 
-The test suite also resolves Paper API and MariaDB Connector/J under the
+The test suite also resolves Paper API, PlaceholderAPI, and MariaDB Connector/J under the
 versions and licenses listed above.
 
 ## Build tooling included or declared by the repository

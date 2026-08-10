@@ -9,6 +9,10 @@ The project follows Semantic Versioning for public releases and uses prerelease 
 
 ### Added
 
+- Added an optional native PlaceholderAPI expansion for high-frequency wallet, bank, total, currency-symbol and leaderboard placeholders.
+- Added exact minor-unit read snapshots to the supported asynchronous economy API for presentation integrations.
+- Added shared exact currency formatting and deterministic leaderboard ranking utilities used by commands and PlaceholderAPI.
+- Added PlaceholderAPI integration documentation, reload guarantees, performance classification and regression tests.
 - Added the final SodaEconomy source-available license package based on Apache
   License 2.0 with Commons Clause License Condition v1.0.
 - Added a license FAQ, trademark and naming policy, top-level NOTICE, expanded

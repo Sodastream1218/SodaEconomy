@@ -45,7 +45,7 @@ class CompatibilityMetadataTest {
         String pom = Files.readString(PROJECT_ROOT.resolve("pom.xml"));
         String gradle = readOptionalBuildFile("build.gradle.kts");
 
-        assertTrue(pluginYml.contains("softdepend: [Vault, floodgate]"),
+        assertTrue(pluginYml.contains("softdepend: [Vault, floodgate, PlaceholderAPI]"),
                 "Vault and Floodgate must remain optional soft dependencies.");
         assertTrue(!pom.contains("org.geysermc.floodgate"),
                 "The main Maven build must not introduce a hard Floodgate dependency.");
@@ -60,7 +60,7 @@ class CompatibilityMetadataTest {
         String pluginYml = Files.readString(PROJECT_ROOT.resolve("src/main/resources/plugin.yml"));
         String pom = Files.readString(PROJECT_ROOT.resolve("pom.xml"));
 
-        assertTrue(pluginYml.contains("softdepend: [Vault, floodgate]"));
+        assertTrue(pluginYml.contains("softdepend: [Vault, floodgate, PlaceholderAPI]"));
         assertTrue(!pluginYml.contains("provides: [Vault]"));
         assertTrue(pom.contains("<artifactId>VaultAPI</artifactId>"));
         assertTrue(pom.contains("<scope>provided</scope>"));
@@ -73,6 +73,39 @@ class CompatibilityMetadataTest {
         assertTrue(buildContracts.contains("Maven scope: provided"));
         assertTrue(buildContracts.contains("Gradle configuration: compileOnly"));
         assertTrue(buildContracts.contains("Transitive dependencies: disabled"));
+    }
+
+
+    @Test
+    void placeholderApiIntegrationIsOptionalProvidedAndNeverShaded() throws IOException {
+        String pluginYml = Files.readString(PROJECT_ROOT.resolve("src/main/resources/plugin.yml"));
+        String pom = Files.readString(PROJECT_ROOT.resolve("pom.xml"));
+        String gradle = readOptionalBuildFile("build.gradle.kts");
+        String workflow = Files.readString(PROJECT_ROOT.resolve(".github/workflows/test.yml"));
+
+        assertTrue(pluginYml.contains("softdepend: [Vault, floodgate, PlaceholderAPI]"));
+        assertTrue(pom.contains("<artifactId>placeholderapi</artifactId>"));
+        assertTrue(pom.contains("<placeholderapi.version>2.12.3</placeholderapi.version>"));
+        assertTrue(pom.contains("<scope>provided</scope>"));
+        assertTrue(pom.contains("https://repo.helpch.at/releases/"));
+        assertTrue(gradle.contains("compileOnly(\"me.clip:placeholderapi:2.12.3\")"));
+        assertTrue(gradle.contains("me/clip/placeholderapi/"),
+                "The release-JAR verifier must reject accidentally shaded PlaceholderAPI classes.");
+        assertTrue(workflow.contains("me/clip/placeholderapi/"));
+        assertTrue(Files.isRegularFile(PROJECT_ROOT.resolve("docs/placeholderapi-integration.md")));
+
+        String bootstrap = Files.readString(PROJECT_ROOT.resolve(
+                "src/main/java/de/sodaeconomy/integration/placeholderapi/PlaceholderApiIntegrationBootstrap.java"));
+        String pluginMain = Files.readString(PROJECT_ROOT.resolve("src/main/java/de/sodaeconomy/SodaEconomy.java"));
+        assertTrue(!bootstrap.contains("import me.clip.placeholderapi"),
+                "The optional bootstrap must be loadable without PlaceholderAPI classes.");
+        assertTrue(!pluginMain.contains("import me.clip.placeholderapi"),
+                "The core plugin class must not link PlaceholderAPI types directly.");
+
+        String notices = Files.readString(PROJECT_ROOT.resolve("THIRD_PARTY_NOTICES.md"));
+        assertTrue(notices.contains("PlaceholderAPI 2.12.3"));
+        assertTrue(notices.contains("GPL-3.0"));
+        assertTrue(notices.contains("not bundled"));
     }
 
     @Test

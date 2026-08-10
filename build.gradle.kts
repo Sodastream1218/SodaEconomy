@@ -19,10 +19,12 @@ repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://jitpack.io")
+    maven("https://repo.helpch.at/releases/")
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.20.2-R0.1-SNAPSHOT")
+    compileOnly("me.clip:placeholderapi:2.12.3")
     compileOnly("com.github.MilkBowl:VaultAPI:1.7.1") {
         isTransitive = false
     }
@@ -118,6 +120,25 @@ val verifyNoEmbeddedDatabaseServerDriver by tasks.registering {
     }
 }
 
+val verifyNoEmbeddedPlaceholderApi by tasks.registering {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Verifies that PlaceholderAPI remains an external optional dependency."
+    dependsOn(tasks.shadowJar)
+
+    doLast {
+        val releaseJar = tasks.shadowJar.get().archiveFile.get().asFile
+        ZipFile(releaseJar).use { archive ->
+            val matches = archive.entries().asSequence()
+                .map { it.name }
+                .filter { it.startsWith("me/clip/placeholderapi/") }
+                .toList()
+            check(matches.isEmpty()) {
+                "Release JAR contains embedded PlaceholderAPI classes: ${matches.joinToString()}"
+            }
+        }
+    }
+}
+
 tasks.jacocoTestReport {
     executionData.setFrom(fileTree(layout.buildDirectory) {
         include("jacoco/*.exec")
@@ -158,6 +179,7 @@ tasks.jacocoTestCoverageVerification {
 tasks.check {
     dependsOn(mysqlIntegrationTest)
     dependsOn(verifyNoEmbeddedDatabaseServerDriver)
+    dependsOn(verifyNoEmbeddedPlaceholderApi)
     dependsOn(tasks.jacocoTestCoverageVerification)
 }
 
