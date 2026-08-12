@@ -144,15 +144,21 @@ class CompatibilityMetadataTest {
 
 
     @Test
-    void mysqlLegacyMigrationAvoidsParameterizedLimitForUpdateSyntax() throws IOException {
+    void mysqlMariaDbSharedJdbcSqlAvoidsDialectSpecificPreparedStatementSyntax() throws IOException {
         String mysqlStorage = Files.readString(PROJECT_ROOT.resolve(
                 "src/main/java/de/sodaeconomy/storage/MySQLStorage.java"));
 
         assertTrue(!mysqlStorage.contains("LIMIT ? FOR UPDATE"),
-                "The legacy MySQL balance migration must avoid parameterized LIMIT ... FOR UPDATE syntax "
+                "The legacy MySQL/MariaDB balance migration must avoid parameterized LIMIT ... FOR UPDATE syntax "
                         + "because supported database products differ on this prepared-statement edge case.");
         assertTrue(mysqlStorage.contains("LIMIT \" + BALANCE_MIGRATION_BATCH_SIZE"),
                 "The balance migration batch size must remain an internal constant, not user-controlled SQL.");
+        assertTrue(!mysqlStorage.contains(" FOR SHARE"),
+                "The shared mutation-gate read must avoid MySQL-only FOR SHARE syntax so MariaDB 11.8 can "
+                        + "initialize the schema.");
+        assertTrue(mysqlStorage.contains("LOCK IN SHARE MODE"),
+                "The shared mutation-gate read should keep shared-lock semantics through syntax accepted by "
+                        + "both supported database products.");
     }
 
     @Test

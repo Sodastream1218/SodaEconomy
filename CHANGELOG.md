@@ -9,6 +9,10 @@ The project follows Semantic Versioning for public releases and uses prerelease 
 
 ### Fixed
 
+- Fixed MariaDB 11.8 integration-test startup by replacing the mutation-gate `FOR SHARE` read with `LOCK IN SHARE MODE`, preserving shared-lock semantics while avoiding a MySQL-only syntax edge.
+
+### Fixed
+
 - Hardened the MySQL/MariaDB legacy exact-balance migration query by removing a dialect-sensitive parameterized `LIMIT ... FOR UPDATE` pattern during schema initialization.
 - Added real `BankManager` facade tests for asynchronous bank operations and interval-aware interest instead of lowering the JaCoCo coverage threshold.
 

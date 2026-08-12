@@ -616,7 +616,7 @@ public class MySQLStorage implements Storage, WalletTransactionStore, StorageMai
 
     private void assertMutationsAllowed() throws SQLException {
         try (PreparedStatement select = connection.prepareStatement("SELECT maintenance_active, owner_token FROM "
-                + RUNTIME_STATE_TABLE + " WHERE state_name=? FOR SHARE")) {
+                + RUNTIME_STATE_TABLE + " WHERE state_name=? LOCK IN SHARE MODE")) {
             select.setString(1, MUTATION_GATE);
             try (ResultSet rows = select.executeQuery()) {
                 if (!rows.next()) throw new SQLException("The shared mutation gate is missing");
