@@ -64,9 +64,11 @@ class CompatibilityMetadataTest {
         assertTrue(pluginYml.contains("softdepend: [Vault, floodgate, PlaceholderAPI]"));
         assertTrue(!pluginYml.contains("provides: [Vault]"));
         assertTrue(pom.contains("<artifactId>VaultAPI</artifactId>"));
+        assertTrue(pom.contains("<vaultapi.version>1.7</vaultapi.version>"),
+                "VaultAPI must use the documented two-part 1.7 API coordinate.");
         assertTrue(pom.contains("<scope>provided</scope>"));
-        assertTrue(gradle.contains("compileOnly(\"com.github.MilkBowl:VaultAPI:1.7.1\")"));
-        assertTrue(gradle.contains("testImplementation(\"com.github.MilkBowl:VaultAPI:1.7.1\")"),
+        assertTrue(gradle.contains("compileOnly(\"com.github.MilkBowl:VaultAPI:1.7\")"));
+        assertTrue(gradle.contains("testImplementation(\"com.github.MilkBowl:VaultAPI:1.7\")"),
                 "Gradle test compilation must include VaultAPI because test source sets do not inherit compileOnly.");
         assertTrue(gradle.contains("net/milkbowl/vault/"),
                 "The release-JAR verifier must reject accidentally shaded Vault API classes.");
@@ -138,6 +140,19 @@ class CompatibilityMetadataTest {
         assertTrue(Files.isRegularFile(packagedNotices));
         assertTrue(Files.readString(notices).equals(Files.readString(packagedNotices)),
                 "The packaged third-party notices must match the repository notice inventory.");
+    }
+
+
+    @Test
+    void mysqlLegacyMigrationAvoidsParameterizedLimitForUpdateSyntax() throws IOException {
+        String mysqlStorage = Files.readString(PROJECT_ROOT.resolve(
+                "src/main/java/de/sodaeconomy/storage/MySQLStorage.java"));
+
+        assertTrue(!mysqlStorage.contains("LIMIT ? FOR UPDATE"),
+                "The legacy MySQL balance migration must avoid parameterized LIMIT ... FOR UPDATE syntax "
+                        + "because supported database products differ on this prepared-statement edge case.");
+        assertTrue(mysqlStorage.contains("LIMIT \" + BALANCE_MIGRATION_BATCH_SIZE"),
+                "The balance migration batch size must remain an internal constant, not user-controlled SQL.");
     }
 
     @Test

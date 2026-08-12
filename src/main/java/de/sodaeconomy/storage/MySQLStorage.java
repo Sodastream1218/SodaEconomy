@@ -364,11 +364,10 @@ public class MySQLStorage implements Storage, WalletTransactionStore, StorageMai
     private List<BalanceMigration> readBalanceMigrationBatch(String lastStorageKey) throws SQLException {
         String sql = "SELECT uuid," + WALLET_BALANCE_COLUMN + "," + BANK_BALANCE_COLUMN + ","
                 + WALLET_BALANCE_MINOR_COLUMN + "," + BANK_BALANCE_MINOR_COLUMN + " FROM balances WHERE uuid>? "
-                + "ORDER BY uuid ASC LIMIT ? FOR UPDATE";
+                + "ORDER BY uuid ASC LIMIT " + BALANCE_MIGRATION_BATCH_SIZE;
         List<BalanceMigration> batch = new ArrayList<>(BALANCE_MIGRATION_BATCH_SIZE);
         try (PreparedStatement select = connection.prepareStatement(sql)) {
             select.setString(1, lastStorageKey);
-            select.setInt(2, BALANCE_MIGRATION_BATCH_SIZE);
             try (ResultSet rows = select.executeQuery()) {
                 while (rows.next()) {
                     String storageKey = rows.getString("uuid");

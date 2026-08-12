@@ -25,13 +25,14 @@ repositories {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.20.2-R0.1-SNAPSHOT")
     compileOnly("me.clip:placeholderapi:2.12.3")
-    compileOnly("com.github.MilkBowl:VaultAPI:1.7.1") {
+    // VaultAPI uses two-part API versions; 1.7 is the documented compileOnly API line.
+    compileOnly("com.github.MilkBowl:VaultAPI:1.7") {
         isTransitive = false
     }
     // Gradle's test classpath does not inherit compileOnly dependencies. Vault-facing
     // MockBukkit tests need the Vault API types at compile and runtime, but this
     // testImplementation entry still does not affect the published plugin JAR.
-    testImplementation("com.github.MilkBowl:VaultAPI:1.7.1") {
+    testImplementation("com.github.MilkBowl:VaultAPI:1.7") {
         isTransitive = false
     }
     implementation("org.xerial:sqlite-jdbc:3.46.1.3")

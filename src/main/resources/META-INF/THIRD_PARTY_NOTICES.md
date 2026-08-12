@@ -58,9 +58,9 @@ JAR.
   remain authoritative
 - Distribution: provided by Paper/Purpur and not bundled
 
-### VaultAPI 1.7.1
+### VaultAPI 1.7
 
-- Coordinate: `com.github.MilkBowl:VaultAPI:1.7.1`
+- Coordinate: `com.github.MilkBowl:VaultAPI:1.7`
 - Purpose: optional Vault economy-provider contract
 - License: GNU Lesser General Public License v3.0 or later
   (`LGPL-3.0-or-later`)

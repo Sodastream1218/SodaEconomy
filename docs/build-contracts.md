@@ -9,7 +9,9 @@ Vault support is an optional integration adapter. SodaEconomy must not require
 Vault at runtime and must not shade VaultAPI or VaultAPI's legacy Bukkit
 transitive dependency into the plugin JAR.
 
-- Dependency: VaultAPI 1.7.1
+- Dependency: VaultAPI 1.7
+- Coordinate: `com.github.MilkBowl:VaultAPI:1.7`
+- Version rationale: VaultAPI documents two-part API versions; the API line is `1.7`, not a three-part plugin release version
 - Maven scope: provided
 - Gradle production configuration: compileOnly
 - Gradle test configuration: testImplementation, because Gradle tests do not inherit compileOnly

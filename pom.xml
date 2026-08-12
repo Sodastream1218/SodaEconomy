@@ -17,7 +17,7 @@
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <junit.version>5.10.1</junit.version>
         <mockbukkit.version>3.58.1</mockbukkit.version>
-        <vaultapi.version>1.7.1</vaultapi.version>
+        <vaultapi.version>1.7</vaultapi.version>
         <mariadb.connector.version>3.5.9</mariadb.connector.version>
         <placeholderapi.version>2.12.3</placeholderapi.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -38,7 +38,8 @@
             <version>${placeholderapi.version}</version>
             <scope>provided</scope>
         </dependency>
-        <!-- Optional server-provided Vault API. Never shaded into SodaEconomy. -->
+        <!-- Optional server-provided Vault API. Never shaded into SodaEconomy.
+             VaultAPI uses two-part API versions; 1.7 is the documented API line. -->
         <dependency>
             <groupId>com.github.MilkBowl</groupId>
             <artifactId>VaultAPI</artifactId>

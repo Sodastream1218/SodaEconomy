@@ -9,6 +9,15 @@ The project follows Semantic Versioning for public releases and uses prerelease 
 
 ### Fixed
 
+- Hardened the MySQL/MariaDB legacy exact-balance migration query by removing a dialect-sensitive parameterized `LIMIT ... FOR UPDATE` pattern during schema initialization.
+- Added real `BankManager` facade tests for asynchronous bank operations and interval-aware interest instead of lowering the JaCoCo coverage threshold.
+
+### Fixed
+
+- Fixed the Gradle VaultAPI compile classpath by using the documented `com.github.MilkBowl:VaultAPI:1.7` API line for both production `compileOnly` and test `testImplementation`, while continuing to reject Vault API classes in the release JAR.
+
+### Fixed
+
 - Fixed the Gradle test classpath for Vault-facing MockBukkit tests by adding VaultAPI to the test configuration without bundling it into the release JAR.
 - Extended release-JAR verification to reject accidentally shaded Vault API classes.
 
