@@ -9,6 +9,10 @@ The project follows Semantic Versioning for public releases and uses prerelease 
 
 ### Fixed
 
+- Hardened MariaDB 11.8 cross-instance wallet concurrency by using `READ COMMITTED` on JDBC connections and expanding transient InnoDB retry handling with capped exponential backoff plus jitter.
+
+### Fixed
+
 - Fixed MariaDB 11.8 integration-test startup by replacing the mutation-gate `FOR SHARE` read with `LOCK IN SHARE MODE`, preserving shared-lock semantics while avoiding a MySQL-only syntax edge.
 
 ### Fixed

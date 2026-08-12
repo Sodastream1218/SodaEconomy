@@ -40,6 +40,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * MySQL/MariaDB storage backed by MariaDB Connector/J, with serialized access and explicit JDBC
@@ -66,7 +67,9 @@ public class MySQLStorage implements Storage, WalletTransactionStore, StorageMai
     private static final String WALLET_BALANCE_MINOR_COLUMN = "balance_minor";
     private static final String BANK_BALANCE_MINOR_COLUMN = "bank_balance_minor";
     private static final int BALANCE_MIGRATION_BATCH_SIZE = 500;
-    private static final int MYSQL_TRANSACTION_RETRY_ATTEMPTS = 4;
+    private static final int MYSQL_TRANSACTION_RETRY_ATTEMPTS = 12;
+    private static final long MYSQL_TRANSACTION_RETRY_BASE_DELAY_MILLIS = 15L;
+    private static final long MYSQL_TRANSACTION_RETRY_MAX_DELAY_MILLIS = 250L;
     private static final int MYSQL_DEADLOCK_ERROR = 1213;
     private static final int MYSQL_LOCK_WAIT_TIMEOUT_ERROR = 1205;
     private static final String TRANSACTION_COLUMNS = "id, timestamp_epoch_millis, transaction_type, transaction_status, "
@@ -152,6 +155,7 @@ public class MySQLStorage implements Storage, WalletTransactionStore, StorageMai
         }
 
         connection = DriverManager.getConnection(url, user, password);
+        configureJdbcConnection(connection);
         logJdbcMetadataOnce();
         try {
             ensureSchema();
@@ -159,6 +163,11 @@ public class MySQLStorage implements Storage, WalletTransactionStore, StorageMai
             close();
             throw exception;
         }
+    }
+
+
+    private void configureJdbcConnection(Connection jdbcConnection) throws SQLException {
+        jdbcConnection.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
     }
 
     private void logJdbcMetadataOnce() {
@@ -2122,7 +2131,10 @@ public class MySQLStorage implements Storage, WalletTransactionStore, StorageMai
     }
 
     private void sleepBeforeRetry(int attempt, SQLException cause) throws SQLException {
-        long delayMillis = Math.min(25L * attempt, 100L);
+        long exponentialDelay = MYSQL_TRANSACTION_RETRY_BASE_DELAY_MILLIS
+                * (1L << Math.min(Math.max(attempt - 1, 0), 4));
+        long jitterMillis = ThreadLocalRandom.current().nextLong(0L, MYSQL_TRANSACTION_RETRY_BASE_DELAY_MILLIS + 1L);
+        long delayMillis = Math.min(exponentialDelay + jitterMillis, MYSQL_TRANSACTION_RETRY_MAX_DELAY_MILLIS);
         if (debug) {
             plugin.getLogger().warning("[Storage] Retrying transient MYSQL/MariaDB wallet transaction failure in "
                     + delayMillis + " ms (attempt " + attempt + "/" + MYSQL_TRANSACTION_RETRY_ATTEMPTS

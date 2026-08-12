@@ -161,6 +161,22 @@ class CompatibilityMetadataTest {
                         + "both supported database products.");
     }
 
+
+    @Test
+    void mysqlMariaDbTransactionRetryPolicyIsSizedForCrossInstanceConcurrency() throws IOException {
+        String mysqlStorage = Files.readString(PROJECT_ROOT.resolve(
+                "src/main/java/de/sodaeconomy/storage/MySQLStorage.java"));
+
+        assertTrue(mysqlStorage.contains("MYSQL_TRANSACTION_RETRY_ATTEMPTS = 12"),
+                "The MySQL/MariaDB transaction retry budget must cover transient InnoDB deadlocks observed "
+                        + "under cross-instance MariaDB concurrency.");
+        assertTrue(mysqlStorage.contains("TRANSACTION_READ_COMMITTED"),
+                "The shared JDBC storage path should use READ COMMITTED with explicit row locks to reduce "
+                        + "MariaDB gap-lock contention while preserving wallet-row serialization.");
+        assertTrue(mysqlStorage.contains("ThreadLocalRandom.current().nextLong"),
+                "Retry backoff should include jitter so parallel storage instances do not repeatedly collide.");
+    }
+
     @Test
     void compatibilityDocumentationExists() {
         Path documentation = PROJECT_ROOT.resolve("docs/compatibility.md");
