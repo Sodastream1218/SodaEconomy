@@ -136,6 +136,7 @@
                 <version>3.2.5</version>
                 <configuration>
                     <useModulePath>false</useModulePath>
+                    <excludedGroups>recovery-stress</excludedGroups>
                 </configuration>
             </plugin>
 
@@ -237,4 +238,24 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>recovery-stress</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <version>3.2.5</version>
+                        <configuration>
+                            <useModulePath>false</useModulePath>
+                            <groups combine.self="override">recovery-stress</groups>
+                            <excludedGroups combine.self="override">__none__</excludedGroups>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
 </project>

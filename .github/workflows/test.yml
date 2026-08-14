@@ -4,6 +4,11 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      recovery_mutations:
+        description: 'Pending recovery WAL mutations for the opt-in filesystem stress job'
+        required: false
+        default: '10000'
 
 permissions:
   contents: read
@@ -105,3 +110,28 @@ jobs:
             grep -E '^(com/mysql/|de/sodaeconomy/libs/mysql/|org/mariadb/jdbc/|com/google/protobuf/|me/clip/placeholderapi/|net/milkbowl/vault/)' build/release-jar-contents.txt >&2
             exit 1
           fi
+
+  recovery-stress:
+    name: Local recovery WAL stress
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle Wrapper executable
+        run: chmod +x gradlew
+
+      - name: Run local recovery WAL filesystem stress test
+        run: ./gradlew --no-daemon localPersistenceStressTest -Dsodaeconomy.recovery.stress.mutations=${{ inputs.recovery_mutations }}

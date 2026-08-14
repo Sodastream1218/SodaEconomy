@@ -53,3 +53,24 @@ The published plugin JAR must not embed a MySQL or MariaDB JDBC driver.
 - Storage/config name: remains `MYSQL`
 - Forbidden release-JAR packages: `com/mysql/`, `de/sodaeconomy/libs/mysql/`,
   `org/mariadb/jdbc/`, `com/google/protobuf/`
+
+## Local persistence recovery
+
+YAML/SQLite async persistence uses the internal version-2 `local-persistence-recovery.wal` only as
+a bounded durability bridge for unresolved queue writes. The release contract is:
+
+- no complete historical journal scan/write per accepted mutation;
+- canonical `long` minor units in recovery records;
+- one forced compact pending record before local acceptance;
+- stale records after backend commit must reconcile idempotently;
+- queue drain removes recovery payload;
+- legacy `local-persistence-recovery.yml` version 1 remains upgrade-readable;
+- corrupt recovery state fails closed and is preserved;
+- an internal 256 MiB WAL ceiling prevents unbounded local disk growth beyond ordinary queue backpressure;
+- heavy filesystem load tests use the `recovery-stress` JUnit tag and are excluded from normal tests.
+
+Release-candidate stress command:
+
+```bash
+./gradlew localPersistenceStressTest -Dsodaeconomy.recovery.stress.mutations=100000
+```

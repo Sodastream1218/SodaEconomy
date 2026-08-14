@@ -92,6 +92,12 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
 
     public AsyncWalletTransactionStore(SodaEconomy plugin, Storage storage, WalletTransactionStore transactionStore,
                                        AsyncPersistenceSettings settings) throws Exception {
+        this(plugin, storage, transactionStore, settings, new LocalPersistenceRecoveryStore(plugin));
+    }
+
+    AsyncWalletTransactionStore(SodaEconomy plugin, Storage storage, WalletTransactionStore transactionStore,
+                                AsyncPersistenceSettings settings, LocalPersistenceRecoveryStore recoveryStore)
+            throws Exception {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
         this.storage = Objects.requireNonNull(storage, "storage");
         this.transactionStore = Objects.requireNonNull(transactionStore, "transactionStore");
@@ -99,10 +105,10 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
         if (storage != transactionStore) {
             throw new IllegalArgumentException("The wallet transaction store must be the active storage instance");
         }
-        recoveryStore = new LocalPersistenceRecoveryStore(plugin);
+        this.recoveryStore = Objects.requireNonNull(recoveryStore, "recoveryStore");
         worker = new ScheduledThreadPoolExecutor(1, new PersistenceThreadFactory());
         worker.setRemoveOnCancelPolicy(true);
-        recoveryStore.restoreIfPresent(storage);
+        this.recoveryStore.restoreIfPresent(storage);
         reloadCache();
     }
 
@@ -227,11 +233,17 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
         stateLock.lock();
         try {
             requireWritableCapacityLocked();
+            BalanceBackup backup = BalanceBackup.capture(walletBalances, Set.of(uuid));
             walletBalances.put(uuid, minor);
-            enqueueLocked("legacy wallet balance update for " + uuid, () -> {
-                storage.setBalance(uuid, Money.fromMinorUnits(minor));
-                return null;
-            });
+            try {
+                enqueueLocked("legacy wallet balance update for " + uuid, () -> {
+                    storage.setBalance(uuid, Money.fromMinorUnits(minor));
+                    return null;
+                }, RecoveryDelta.wallet(Map.of(uuid, minor)));
+            } catch (Exception exception) {
+                backup.restore(walletBalances);
+                throw exception;
+            }
         } finally {
             stateLock.unlock();
         }
@@ -267,11 +279,17 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
         stateLock.lock();
         try {
             requireWritableCapacityLocked();
+            BalanceBackup backup = BalanceBackup.capture(walletBalances, values.keySet());
             walletBalances.putAll(values);
-            enqueueLocked("legacy wallet balance batch", () -> {
-                storage.saveAll(persistedValues);
-                return null;
-            });
+            try {
+                enqueueLocked("legacy wallet balance batch", () -> {
+                    storage.saveAll(persistedValues);
+                    return null;
+                }, RecoveryDelta.wallet(values));
+            } catch (Exception exception) {
+                backup.restore(walletBalances);
+                throw exception;
+            }
         } finally {
             stateLock.unlock();
         }
@@ -343,11 +361,17 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
         stateLock.lock();
         try {
             requireWritableCapacityLocked();
+            BalanceBackup backup = BalanceBackup.capture(bankBalances, Set.of(uuid));
             bankBalances.put(uuid, minor);
-            enqueueLocked("bank balance update for " + uuid, () -> {
-                storage.setBankBalance(uuid, Money.fromMinorUnits(minor));
-                return null;
-            });
+            try {
+                enqueueLocked("bank balance update for " + uuid, () -> {
+                    storage.setBankBalance(uuid, Money.fromMinorUnits(minor));
+                    return null;
+                }, RecoveryDelta.bank(Map.of(uuid, minor)));
+            } catch (Exception exception) {
+                backup.restore(bankBalances);
+                throw exception;
+            }
         } finally {
             stateLock.unlock();
         }
@@ -383,11 +407,17 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
         stateLock.lock();
         try {
             requireWritableCapacityLocked();
+            BalanceBackup backup = BalanceBackup.capture(bankBalances, values.keySet());
             bankBalances.putAll(values);
-            enqueueLocked("bank balance batch", () -> {
-                storage.saveAllBank(persistedValues);
-                return null;
-            });
+            try {
+                enqueueLocked("bank balance batch", () -> {
+                    storage.saveAllBank(persistedValues);
+                    return null;
+                }, RecoveryDelta.bank(values));
+            } catch (Exception exception) {
+                backup.restore(bankBalances);
+                throw exception;
+            }
         } finally {
             stateLock.unlock();
         }
@@ -401,11 +431,17 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
         stateLock.lock();
         try {
             requireWritableCapacityLocked();
+            BalanceBackup backup = BalanceBackup.capture(bankBalances, values.keySet());
             bankBalances.putAll(values);
-            enqueueLocked("exact bank balance batch", () -> {
-                storage.saveAllBankMinorUnits(values);
-                return null;
-            });
+            try {
+                enqueueLocked("exact bank balance batch", () -> {
+                    storage.saveAllBankMinorUnits(values);
+                    return null;
+                }, RecoveryDelta.bank(values));
+            } catch (Exception exception) {
+                backup.restore(bankBalances);
+                throw exception;
+            }
         } finally {
             stateLock.unlock();
         }
@@ -466,13 +502,19 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
             if (!canAcceptWriteLocked()) {
                 return false;
             }
+            BalanceBackup backup = BalanceBackup.capture(walletBalances, Set.of(source, target));
             walletBalances.put(source, sourceBefore - amountMinor);
             walletBalances.put(target, targetAfter);
-            enqueueLocked("legacy wallet transfer " + source + " to " + target, () -> {
-                storage.transferMain(source, target, Money.fromMinorUnits(amountMinor));
-                return null;
-            });
-            return true;
+            try {
+                enqueueLocked("legacy wallet transfer " + source + " to " + target, () -> {
+                    storage.transferMain(source, target, Money.fromMinorUnits(amountMinor));
+                    return null;
+                }, RecoveryDelta.wallet(Map.of(source, sourceBefore - amountMinor, target, targetAfter)));
+                return true;
+            } catch (Exception exception) {
+                backup.restore(walletBalances);
+                throw exception;
+            }
         } finally {
             stateLock.unlock();
         }
@@ -519,13 +561,21 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
             if (!canAcceptWriteLocked()) {
                 return false;
             }
+            BalanceBackup walletBackup = BalanceBackup.capture(walletBalances, Set.of(uuid));
+            BalanceBackup bankBackup = BalanceBackup.capture(bankBalances, Set.of(uuid));
             walletBalances.put(uuid, walletAfter);
             bankBalances.put(uuid, bankAfter);
-            enqueueLocked("legacy wallet-bank transfer for " + uuid, () -> {
-                storage.transferMainAndBank(uuid, mainToBank, Money.fromMinorUnits(amountMinor));
-                return null;
-            });
-            return true;
+            try {
+                enqueueLocked("legacy wallet-bank transfer for " + uuid, () -> {
+                    storage.transferMainAndBank(uuid, mainToBank, Money.fromMinorUnits(amountMinor));
+                    return null;
+                }, RecoveryDelta.walletAndBank(Map.of(uuid, walletAfter), Map.of(uuid, bankAfter)));
+                return true;
+            } catch (Exception exception) {
+                walletBackup.restore(walletBalances);
+                bankBackup.restore(bankBalances);
+                throw exception;
+            }
         } finally {
             stateLock.unlock();
         }
@@ -546,6 +596,8 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
                 return new WalletAccountState(existing, false);
             }
             requireWritableCapacityLocked();
+            BalanceBackup walletBackup = BalanceBackup.capture(walletBalances, Set.of(playerId));
+            BalanceBackup bankBackup = BalanceBackup.capture(bankBalances, Set.of(playerId));
             walletBalances.put(playerId, startingBalanceMinor);
             bankBalances.putIfAbsent(playerId, 0L);
             CompletableFuture<Void> completion = new CompletableFuture<>();
@@ -559,14 +611,16 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
                 }
             });
             try {
+                LocalRecoveryState.AccountInitialization initialization =
+                        new LocalRecoveryState.AccountInitialization(startingBalanceMinor, timestamp);
                 enqueueLocked("wallet account initialization for " + playerId, () -> {
                     transactionStore.ensureWalletAccount(playerId, startingBalanceMinor, timestamp);
                     return null;
-                }, null, completion);
+                }, null, completion, RecoveryDelta.accountInitialization(playerId, startingBalanceMinor, initialization));
             } catch (Exception exception) {
                 accountPersistence.remove(playerId, completion);
-                walletBalances.remove(playerId, startingBalanceMinor);
-                bankBalances.remove(playerId, 0L);
+                walletBackup.restore(walletBalances);
+                bankBackup.restore(bankBalances);
                 completion.completeExceptionally(exception);
                 throw exception;
             }
@@ -641,6 +695,7 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
         if (!acceptingWrites.get() || health == PersistenceHealth.DRAINING || health == PersistenceHealth.STOPPED) {
             throw new PersistenceUnavailableException("Local persistence is stopping");
         }
+        recoveryStore.prepareForDirectAuthoritativeWrite();
     }
 
     private void applyAuthoritativeWalletRecordLocked(TransactionRecord record) {
@@ -679,9 +734,17 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
             if (!canAcceptWriteLocked()) {
                 return persistenceUnavailableRecordLocked(request);
             }
+            BalanceBackup walletBackup = BalanceBackup.capture(walletBalances, participantIds(request));
             TransactionRecord record = evaluateWalletMutation(request, maximumBalanceMinor);
-            enqueueTransactionLocked(record, () -> transactionStore.executeWalletTransaction(request, maximumBalanceMinor));
-            return record;
+            try {
+                enqueueTransactionLocked(record,
+                        () -> transactionStore.executeWalletTransaction(request, maximumBalanceMinor),
+                        RecoveryDelta.transaction(record, Map.of()));
+                return record;
+            } catch (Exception exception) {
+                walletBackup.restore(walletBalances);
+                throw exception;
+            }
         } finally {
             stateLock.unlock();
         }
@@ -714,10 +777,22 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
             if (!canAcceptWriteLocked()) {
                 return persistenceUnavailableRecordLocked(request);
             }
+            UUID bankPlayerId = mainToBank ? request.sourcePlayerId() : request.targetPlayerId();
+            BalanceBackup walletBackup = BalanceBackup.capture(walletBalances, participantIds(request));
+            BalanceBackup bankBackup = BalanceBackup.capture(bankBalances, Set.of(bankPlayerId));
             TransactionRecord record = evaluateWalletBankMutation(request, mainToBank, maximumBalanceMinor);
-            enqueueTransactionLocked(record,
-                    () -> transactionStore.executeWalletBankTransaction(request, mainToBank, maximumBalanceMinor));
-            return record;
+            try {
+                Map<UUID, Long> recoveryBankBalances = record.isSuccessful()
+                        ? Map.of(bankPlayerId, bankBalances.get(bankPlayerId)) : Map.of();
+                enqueueTransactionLocked(record,
+                        () -> transactionStore.executeWalletBankTransaction(request, mainToBank, maximumBalanceMinor),
+                        RecoveryDelta.transaction(record, recoveryBankBalances));
+                return record;
+            } catch (Exception exception) {
+                walletBackup.restore(walletBalances);
+                bankBackup.restore(bankBalances);
+                throw exception;
+            }
         } finally {
             stateLock.unlock();
         }
@@ -1042,7 +1117,7 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
                     "The referenced transaction has already been rolled back.",
                     request.sourcePlayerId() == null ? null : walletBalances.get(request.sourcePlayerId()),
                     request.targetPlayerId() == null ? null : walletBalances.get(request.targetPlayerId()));
-            enqueueTransactionLocked(record, action);
+            enqueueTransactionLocked(record, action, RecoveryDelta.transaction(record, Map.of()));
             return record;
         } finally {
             stateLock.unlock();
@@ -1073,7 +1148,8 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
         return request.idempotencyKey() == null ? null : pendingIdempotencyKeys.get(request.idempotencyKey());
     }
 
-    private void enqueueTransactionLocked(TransactionRecord record, PersistenceAction action) throws Exception {
+    private void enqueueTransactionLocked(TransactionRecord record, PersistenceAction action,
+                                          RecoveryDelta recoveryDelta) throws Exception {
         pendingTransactions.put(record.id(), record);
         CompletableFuture<Void> completion = new CompletableFuture<>();
         transactionPersistence.put(record.id(), completion);
@@ -1083,7 +1159,13 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
         if (record.isSuccessful() && record.reversalOfTransactionId() != null) {
             pendingRollbacks.put(record.reversalOfTransactionId(), record);
         }
-        enqueueLocked("wallet transaction " + record.id(), action, record, completion);
+        try {
+            enqueueLocked("wallet transaction " + record.id(), action, record, completion, recoveryDelta);
+        } catch (Exception exception) {
+            clearPendingTransactionLocked(record);
+            completion.completeExceptionally(exception);
+            throw exception;
+        }
     }
 
     private void clearPendingTransactionLocked(TransactionRecord record) {
@@ -1097,59 +1179,33 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
         }
     }
 
-    private void enqueueLocked(String description, PersistenceAction action) throws Exception {
-        enqueueLocked(description, action, null, null);
+    private void enqueueLocked(String description, PersistenceAction action, RecoveryDelta recoveryDelta) throws Exception {
+        enqueueLocked(description, action, null, null, recoveryDelta);
     }
 
     private void enqueueLocked(String description, PersistenceAction action, TransactionRecord expectedTransaction,
-                               CompletableFuture<Void> completion) throws Exception {
+                               CompletableFuture<Void> completion, RecoveryDelta recoveryDelta) throws Exception {
         requireWritableCapacityLocked();
-        writes.addLast(new PendingWrite(description, action, expectedTransaction, completion, Instant.now()));
-        writeRecoverySnapshotLocked();
+        UUID writeId = UUID.randomUUID();
+        Instant enqueuedAt = Instant.now();
+        LocalRecoveryState recoveryState = recoveryDelta.toRecoveryState(writeId, enqueuedAt);
+        PendingWrite write = new PendingWrite(writeId, description, action, expectedTransaction, completion,
+                enqueuedAt);
+        writes.addLast(write);
+        try {
+            // The compact WAL record is the synchronous durability barrier for locally accepted
+            // mutations. Never schedule the backend write before this force has completed.
+            recoveryStore.appendPending(recoveryState);
+        } catch (Exception exception) {
+            if (writes.peekLast() == write) {
+                writes.removeLast();
+            } else {
+                writes.remove(write);
+            }
+            throw exception;
+        }
         logQueueWarningIfRequiredLocked();
         scheduleDrainLocked(0L, false);
-    }
-
-    /** Must be called while {@link #stateLock} is held. */
-    private void writeRecoverySnapshotLocked() throws Exception {
-        recoveryStore.persistSnapshot(walletBalances, bankBalances, combinedWalletTransactionsLocked());
-    }
-
-    /** Must be called while {@link #stateLock} is held after a successful backend commit. */
-    private void updateRecoverySnapshotAfterCommitLocked() {
-        if (writes.isEmpty()) {
-            recoveryStore.clear();
-            return;
-        }
-        try {
-            writeRecoverySnapshotLocked();
-        } catch (Exception exception) {
-            lastFailureAt = Instant.now();
-            lastFailureSummary = "Could not update the local persistence recovery snapshot: " + summarizeFailure(exception);
-            plugin.getLogger().log(Level.WARNING,
-                    "[Persistence] Could not refresh the local recovery snapshot after a backend commit. "
-                            + "The previous snapshot was kept for crash recovery.", exception);
-        }
-    }
-
-    /** Must be called while {@link #stateLock} is held. */
-    private List<TransactionRecord> combinedWalletTransactionsLocked() throws Exception {
-        Map<UUID, TransactionRecord> records = new LinkedHashMap<>();
-        for (TransactionRecord record : transactionStore.getAllWalletTransactions()) {
-            records.put(record.id(), record);
-        }
-        Set<UUID> queuedTransactions = new HashSet<>();
-        for (PendingWrite write : writes) {
-            if (write.expectedTransaction() != null) {
-                queuedTransactions.add(write.expectedTransaction().id());
-            }
-        }
-        for (TransactionRecord record : pendingTransactions.values()) {
-            if (queuedTransactions.contains(record.id())) {
-                records.put(record.id(), record);
-            }
-        }
-        return new ArrayList<>(records.values());
     }
 
     private void scheduleDrainLocked(long delayMillis, boolean replaceExistingSchedule) {
@@ -1187,6 +1243,10 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
         try {
             TransactionRecord persistedRecord = write.action().persist();
             write.verifyOutcome(persistedRecord);
+            // Once the authoritative backend has committed, recovery cleanup is optional for
+            // correctness: a stale absolute WAL record can be reconciled idempotently after a
+            // crash. Mark it committed before allowing later queue entries to advance.
+            recoveryStore.markCommitted(write.writeId());
             CompletableFuture<Void> completion;
             stateLock.lock();
             try {
@@ -1198,7 +1258,6 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
                 if (write.expectedTransaction() != null) {
                     clearPendingTransactionLocked(write.expectedTransaction());
                 }
-                updateRecoverySnapshotAfterCommitLocked();
                 markSuccessfulWriteLocked();
                 queueDrained.signalAll();
                 scheduleDrainLocked(0L, false);
@@ -1360,6 +1419,7 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
     private void awaitQueueBeforeDirectOperation() throws Exception {
         try {
             if (awaitPersistence(Duration.ofMillis(settings.shutdownTimeoutMillis()))) {
+                recoveryStore.prepareForDirectAuthoritativeWrite();
                 return;
             }
             throw new PersistenceUnavailableException("Local persistence could not drain before a direct storage operation");
@@ -1495,12 +1555,92 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
         return Map.copyOf(converted);
     }
 
+    private static Set<UUID> participantIds(WalletTransactionRequest request) {
+        Set<UUID> playerIds = new HashSet<>();
+        if (request.sourcePlayerId() != null) playerIds.add(request.sourcePlayerId());
+        if (request.targetPlayerId() != null) playerIds.add(request.targetPlayerId());
+        return Set.copyOf(playerIds);
+    }
+
+    private static final class BalanceBackup {
+        private final Map<UUID, Long> presentValues;
+        private final Set<UUID> absentValues;
+
+        private BalanceBackup(Map<UUID, Long> presentValues, Set<UUID> absentValues) {
+            this.presentValues = presentValues;
+            this.absentValues = absentValues;
+        }
+
+        private static BalanceBackup capture(Map<UUID, Long> balances, Set<UUID> playerIds) {
+            Map<UUID, Long> present = new LinkedHashMap<>();
+            Set<UUID> absent = new HashSet<>();
+            for (UUID playerId : playerIds) {
+                Long value = balances.get(playerId);
+                if (value == null) absent.add(playerId);
+                else present.put(playerId, value);
+            }
+            return new BalanceBackup(Map.copyOf(present), Set.copyOf(absent));
+        }
+
+        private void restore(Map<UUID, Long> balances) {
+            for (UUID playerId : absentValues) balances.remove(playerId);
+            balances.putAll(presentValues);
+        }
+    }
+
+    private record RecoveryDelta(Map<UUID, Long> walletBalances, Map<UUID, Long> bankBalances,
+                                 TransactionRecord walletTransaction,
+                                 Map<UUID, LocalRecoveryState.AccountInitialization> accountInitializations) {
+        private RecoveryDelta {
+            walletBalances = Map.copyOf(walletBalances);
+            bankBalances = Map.copyOf(bankBalances);
+            accountInitializations = Map.copyOf(accountInitializations);
+        }
+
+        private static RecoveryDelta wallet(Map<UUID, Long> wallets) {
+            return new RecoveryDelta(wallets, Map.of(), null, Map.of());
+        }
+
+        private static RecoveryDelta bank(Map<UUID, Long> banks) {
+            return new RecoveryDelta(Map.of(), banks, null, Map.of());
+        }
+
+        private static RecoveryDelta walletAndBank(Map<UUID, Long> wallets, Map<UUID, Long> banks) {
+            return new RecoveryDelta(wallets, banks, null, Map.of());
+        }
+
+        private static RecoveryDelta transaction(TransactionRecord record, Map<UUID, Long> banks) {
+            Map<UUID, Long> wallets = new LinkedHashMap<>();
+            if (record.isSuccessful()) {
+                if (record.sourcePlayerId() != null && record.sourceBalanceAfterMinor() != null) {
+                    wallets.put(record.sourcePlayerId(), record.sourceBalanceAfterMinor());
+                }
+                if (record.targetPlayerId() != null && record.targetBalanceAfterMinor() != null) {
+                    wallets.put(record.targetPlayerId(), record.targetBalanceAfterMinor());
+                }
+            }
+            return new RecoveryDelta(Map.copyOf(wallets), banks, record, Map.of());
+        }
+
+        private static RecoveryDelta accountInitialization(UUID playerId, long startingBalanceMinor,
+                                                           LocalRecoveryState.AccountInitialization initialization) {
+            return new RecoveryDelta(Map.of(playerId, startingBalanceMinor), Map.of(playerId, 0L), null,
+                    Map.of(playerId, initialization));
+        }
+
+        private LocalRecoveryState toRecoveryState(UUID writeId, Instant enqueuedAt) {
+            return LocalRecoveryState.of(writeId, enqueuedAt, walletBalances, bankBalances, walletTransaction,
+                    accountInitializations);
+        }
+    }
+
     @FunctionalInterface
     private interface PersistenceAction {
         TransactionRecord persist() throws Exception;
     }
 
     private static final class PendingWrite {
+        private final UUID writeId;
         private final String description;
         private final PersistenceAction action;
         private final TransactionRecord expectedTransaction;
@@ -1508,13 +1648,19 @@ public final class AsyncWalletTransactionStore implements Storage, WalletTransac
         private final Instant enqueuedAt;
         private int failedAttempts;
 
-        private PendingWrite(String description, PersistenceAction action, TransactionRecord expectedTransaction,
-                             CompletableFuture<Void> completion, Instant enqueuedAt) {
+        private PendingWrite(UUID writeId, String description, PersistenceAction action,
+                             TransactionRecord expectedTransaction, CompletableFuture<Void> completion,
+                             Instant enqueuedAt) {
+            this.writeId = Objects.requireNonNull(writeId, "writeId");
             this.description = Objects.requireNonNull(description, "description");
             this.action = Objects.requireNonNull(action, "action");
             this.expectedTransaction = expectedTransaction;
             this.completion = completion;
             this.enqueuedAt = Objects.requireNonNull(enqueuedAt, "enqueuedAt");
+        }
+
+        private UUID writeId() {
+            return writeId;
         }
 
         private String description() {

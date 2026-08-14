@@ -61,11 +61,27 @@ tasks.withType<Test>().configureEach {
 
 tasks.test {
     useJUnitPlatform {
-        excludeTags("mysql-integration")
+        excludeTags("mysql-integration", "recovery-stress")
     }
 }
 
 val testSourceSet = sourceSets.named("test")
+val localPersistenceStressTest by tasks.registering(Test::class) {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Runs opt-in local recovery WAL stress/load tests."
+    testClassesDirs = testSourceSet.get().output.classesDirs
+    classpath = testSourceSet.get().runtimeClasspath
+    useJUnitPlatform {
+        includeTags("recovery-stress")
+    }
+    System.getProperty("sodaeconomy.recovery.stress.mutations")?.let {
+        systemProperty("sodaeconomy.recovery.stress.mutations", it)
+    }
+    shouldRunAfter(tasks.test)
+    reports.junitXml.outputLocation.set(layout.buildDirectory.dir("test-results/localPersistenceStressTest"))
+    reports.html.outputLocation.set(layout.buildDirectory.dir("reports/tests/localPersistenceStressTest"))
+}
+
 val mysqlIntegrationTest by tasks.registering(Test::class) {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
     description = "Runs the MySQL integration tests against the isolated test database."

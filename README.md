@@ -109,20 +109,30 @@ from outside SodaEconomy's internal storage/transaction packages.
 ## Asynchronous persistence
 
 By default, `persistence.async.enabled` keeps runtime wallet and bank balances in a protected
-in-memory cache. Commands therefore validate and update balances immediately without YAML or JDBC
-work on the Paper main thread. One dedicated `SodaEconomy-Persistence` worker writes accepted
-operations to the existing backend in strict acceptance order. YAML keeps its atomic file
-replacement, while SQLite and MySQL retain their database transactions.
+in-memory cache for local YAML/SQLite installations. One dedicated `SodaEconomy-Persistence` worker
+writes accepted operations to the authoritative backend in strict acceptance order. MySQL/MariaDB
+continues using its database-authoritative path and does not use the local write-behind queue.
 
-The queue retries a failed head write with capped exponential backoff and never lets a later write
-overtake it. A normal plugin/server shutdown waits until the queue has drained before closing the
-storage backend. This prioritizes ledger integrity over a fast shutdown during an active storage
-outage. Audit/history and statistics API queries run asynchronously; Bukkit messages and events
-are still scheduled only on the Paper main thread.
+Before a queued local mutation is reported as accepted, SodaEconomy appends one compact recovery
+WAL record and forces it to disk. The record contains only the unresolved mutation's absolute
+post-write account state plus its immutable wallet transaction when applicable. Long-term
+transaction history remains in YAML/SQLite and is **not** copied into recovery storage on every
+mutation. Once persistence catches up, committed recovery entries are compacted away and a fully
+drained queue leaves no recovery WAL payload.
 
-`EconomyTransactionApi` futures preserve durable completion semantics: they complete after the
-queued ledger record has reached the backend. Synchronous command methods return after the safe
-in-memory commit so `/pay` and other gameplay operations remain immediate.
+The queue remains bounded, retries a failed head write with capped exponential backoff, and never
+lets a later write overtake it. A normal plugin/server shutdown drains only up to the configured
+shutdown deadline; any remaining accepted local mutation stays represented by the recovery WAL for
+startup reconciliation. Audit/history and statistics API queries remain asynchronous; Bukkit
+messages and events are still scheduled only on the Paper main thread.
+
+`EconomyTransactionApi` futures preserve authoritative durable-completion semantics: they complete
+after the queued ledger record has reached the backend. Synchronous gameplay/compatibility methods
+may return after the local recovery durability barrier so their accepted state survives an
+immediate process crash within the realistic guarantees of Java and the host filesystem.
+
+See [`docs/local-persistence-recovery.md`](docs/local-persistence-recovery.md) for the recovery state
+machine, corruption behavior, legacy-format upgrade path and opt-in stress tests.
 
 ## Ledger and rollback
 

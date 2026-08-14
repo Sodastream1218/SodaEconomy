@@ -237,6 +237,8 @@ persistence:
     # Default value: 5 (seconds)
     shutdown_warning_interval_seconds: 5
 
+    # YAML/SQLite crash recovery stores only unresolved writes in a bounded local WAL.
+    # Successfully persisted writes are removed/compacted; transaction history stays in the backend journal.
     # Maximum number of accepted local writes that may wait for YAML or SQLite persistence.
     # New economy mutations are rejected before their in-memory state changes once this limit is reached.
     # Default value: 10000

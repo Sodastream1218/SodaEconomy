@@ -14,6 +14,7 @@ import de.sodaeconomy.transaction.TransactionResult;
 import de.sodaeconomy.transaction.TransactionService;
 import de.sodaeconomy.transaction.TransactionType;
 import de.sodaeconomy.transaction.WalletAccountState;
+import de.sodaeconomy.transaction.WalletOperation;
 import de.sodaeconomy.transaction.WalletTransactionRequest;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.junit.jupiter.api.AfterEach;
@@ -294,7 +295,7 @@ class AsyncWalletTransactionStoreTest extends MockBukkitTestBase {
         assertTrue(delegate.awaitBlockedWrite());
         assertEquals(15D, transactions.getBalanceSynchronously(playerId));
         assertEquals(10D, delegate.getBalance(playerId));
-        assertTrue(new java.io.File(plugin.getDataFolder(), "local-persistence-recovery.yml").isFile());
+        assertTrue(new java.io.File(plugin.getDataFolder(), "local-persistence-recovery.wal").isFile());
 
         ControllableStorage restoredBackend = new ControllableStorage();
         restoredBackend.setBalance(playerId, 10D);
@@ -303,12 +304,82 @@ class AsyncWalletTransactionStoreTest extends MockBukkitTestBase {
         try {
             assertEquals(15D, restoredStore.getBalance(playerId));
             assertEquals(result.transaction(), restoredBackend.findTransaction(result.transaction().id()).orElseThrow());
-            assertFalse(new java.io.File(plugin.getDataFolder(), "local-persistence-recovery.yml").exists());
+            assertFalse(new java.io.File(plugin.getDataFolder(), "local-persistence-recovery.wal").exists());
         } finally {
             restoredStore.close();
             delegate.releaseBlockedWrite();
             asynchronousStore.close();
         }
+    }
+
+    @Test
+    void acceptedMutationDoesNotScanTheHistoricalJournalForCrashRecovery() throws Exception {
+        UUID playerId = UUID.randomUUID();
+        initialize(playerId, 10D);
+        delegate.blockNextWalletTransaction();
+
+        TransactionResult result = transactions.depositSynchronously(playerId, 5D, TransactionType.ADMIN_GIVE,
+                TransactionOrigin.console(), "No historical recovery scan", Map.of());
+
+        assertTrue(result.isSuccessful());
+        assertTrue(delegate.awaitBlockedWrite());
+        assertEquals(0, delegate.walletHistoryReads(),
+                "Accepting a local mutation must not read the lifetime wallet journal just to build recovery state");
+
+        delegate.releaseBlockedWrite();
+        assertTrue(asynchronousStore.awaitPersistence(Duration.ofSeconds(2)));
+        assertFalse(new java.io.File(plugin.getDataFolder(), "local-persistence-recovery.wal").exists(),
+                "A healthy drained queue should leave no recovery payload behind");
+    }
+
+    @Test
+    void recoveryWriteFailureRollsBackTheUnprotectedInMemoryMutation() throws Exception {
+        UUID playerId = UUID.randomUUID();
+        delegate = new ControllableStorage();
+        delegate.setBalance(playerId, 10D);
+        LocalPersistenceRecoveryStore failingRecovery = new LocalPersistenceRecoveryStore(plugin) {
+            @Override
+            synchronized void appendPending(LocalRecoveryState state) throws java.io.IOException {
+                throw new java.io.IOException("Simulated recovery disk failure");
+            }
+        };
+        asynchronousStore = new AsyncWalletTransactionStore(plugin, delegate, delegate,
+                new AsyncPersistenceSettings(5L, 25L, 50L), failingRecovery);
+        transactions = new TransactionService(plugin, asynchronousStore, 0D, 0D);
+
+        TransactionResult result = transactions.depositSynchronously(playerId, 5D, TransactionType.ADMIN_GIVE,
+                TransactionOrigin.console(), "Recovery write failure", Map.of());
+
+        assertFalse(result.isSuccessful());
+        assertEquals(TransactionFailureReason.STORAGE_FAILURE, result.failureReason());
+        assertEquals(10D, transactions.getBalanceSynchronously(playerId));
+        assertEquals(10D, delegate.getBalance(playerId));
+        assertEquals(0, asynchronousStore.pendingWriteCount());
+    }
+
+    @Test
+    void directDurableWriteIsBlockedWhenStaleRecoveryResidueCannotBeSafelyCleared() throws Exception {
+        UUID playerId = UUID.randomUUID();
+        delegate = new ControllableStorage();
+        delegate.setBalance(playerId, 10D);
+        LocalPersistenceRecoveryStore failingCleanup = new LocalPersistenceRecoveryStore(plugin) {
+            @Override
+            synchronized void prepareForDirectAuthoritativeWrite() throws java.io.IOException {
+                throw new java.io.IOException("Simulated stale recovery cleanup failure");
+            }
+        };
+        asynchronousStore = new AsyncWalletTransactionStore(plugin, delegate, delegate,
+                new AsyncPersistenceSettings(5L, 25L, 50L), failingCleanup);
+
+        WalletTransactionRequest request = new WalletTransactionRequest(UUID.randomUUID(), Instant.now(),
+                TransactionType.API_DEPOSIT, TransactionOrigin.api("AsyncWalletTransactionStoreTest"),
+                WalletOperation.CREDIT, null, playerId, 500L, null, "Direct cleanup guard", Map.of(),
+                null, null, "direct-cleanup-guard");
+
+        assertThrows(java.io.IOException.class, () -> asynchronousStore.executeWalletTransactionDurably(
+                request, 0L, Duration.ofSeconds(1)));
+        assertEquals(0, delegate.walletTransactionAttempts());
+        assertEquals(10D, delegate.getBalance(playerId));
     }
 
     @Test
@@ -376,6 +447,7 @@ class AsyncWalletTransactionStoreTest extends MockBukkitTestBase {
         private final InMemoryStorage delegate = new InMemoryStorage();
         private final AtomicInteger failedWalletTransactions = new AtomicInteger();
         private final AtomicInteger walletTransactionAttempts = new AtomicInteger();
+        private final AtomicInteger walletHistoryReads = new AtomicInteger();
         private final List<UUID> executedTransactionIds = new java.util.concurrent.CopyOnWriteArrayList<>();
         private volatile boolean returnMismatchedTransactionOutcome;
         private volatile boolean returnEquivalentFailureWithDifferentDetail;
@@ -419,6 +491,10 @@ class AsyncWalletTransactionStoreTest extends MockBukkitTestBase {
 
         int walletTransactionAttempts() {
             return walletTransactionAttempts.get();
+        }
+
+        int walletHistoryReads() {
+            return walletHistoryReads.get();
         }
 
         List<UUID> executedTransactionIds() {
@@ -489,6 +565,9 @@ class AsyncWalletTransactionStoreTest extends MockBukkitTestBase {
         @Override public Optional<TransactionRecord> findTransaction(UUID transactionId) throws Exception { return delegate.findTransaction(transactionId); }
         @Override public TransactionPage findTransactions(TransactionQuery query) throws Exception { return delegate.findTransactions(query); }
         @Override public EconomyStatistics getEconomyStatistics() throws Exception { return delegate.getEconomyStatistics(); }
-        @Override public List<TransactionRecord> getAllWalletTransactions() throws Exception { return delegate.getAllWalletTransactions(); }
+        @Override public List<TransactionRecord> getAllWalletTransactions() throws Exception {
+            walletHistoryReads.incrementAndGet();
+            return delegate.getAllWalletTransactions();
+        }
     }
 }

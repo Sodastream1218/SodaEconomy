@@ -7,6 +7,12 @@ The project follows Semantic Versioning for public releases and uses prerelease 
 
 ## [Unreleased]
 
+### Changed
+
+- Redesigned YAML/SQLite crash recovery as a bounded, checksummed pending-mutation WAL instead of rewriting the complete lifetime wallet journal for every accepted local mutation.
+- Added idempotent startup reconciliation, legacy recovery-file migration, atomic compaction safeguards and direct-write protection against stale recovery residue.
+- Added recovery corruption, precision, crash-boundary, compaction and opt-in 10k/50k/100k filesystem stress tests.
+
 ### Fixed
 
 - Hardened MariaDB 11.8 cross-instance wallet concurrency by using `READ COMMITTED` on JDBC connections and expanding transient InnoDB retry handling with capped exponential backoff plus jitter.
