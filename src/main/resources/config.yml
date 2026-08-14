@@ -47,8 +47,9 @@ storage:
     port: 3306
     # Required and must not be empty when MYSQL is selected.
     database: sodaeconomy
-    # Required and must not be empty when MYSQL is selected.
-    user: root
+    # Required and must not be empty when MYSQL is selected. Use a dedicated database account;
+    # never configure SodaEconomy with a database root/superuser account.
+    user: sodaeconomy
     # Required and must not be empty when MYSQL is selected.
     password: ""
 

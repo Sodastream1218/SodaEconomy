@@ -140,6 +140,26 @@ class EconomyManagerTest {
         assertEquals("$0.00", economy.formatCurrency(Double.NaN));
     }
 
+
+    @Test
+    void exposesReadFacadeMetadataAndStoredBalances() {
+        UUID playerId = UUID.randomUUID();
+        economy.setBalance(playerId, 42.50D);
+
+        assertEquals(42.50D, economy.getAllBalances().get(playerId));
+        assertEquals("Unknown", economy.getPlayerName(null));
+        assertEquals("$12.34", economy.formatCurrencyMinor(1_234L));
+        assertEquals(plugin.getConfigManager().getCurrencySymbol(), economy.getCurrencySymbol());
+        assertEquals(plugin.getConfigManager().isCurrencyDisplayAfterAmount(), economy.isDisplayAfterAmount());
+    }
+
+    @Test
+    void lockedReturnsFallbackWhenTheOperationFails() {
+        assertEquals("fallback", economy.locked(() -> {
+            throw new IllegalStateException("synthetic read failure");
+        }, "fallback"));
+    }
+
     @Test
     void movesFundsBetweenWalletAndBankThroughTheTransactionService() {
         UUID playerId = UUID.randomUUID();

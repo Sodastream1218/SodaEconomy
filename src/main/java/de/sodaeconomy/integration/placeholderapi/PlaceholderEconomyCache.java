@@ -19,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 /**
  * Asynchronously refreshed presentation cache. Placeholder callbacks never wait for persistence;
@@ -40,6 +41,8 @@ final class PlaceholderEconomyCache implements PlaceholderBalanceView, Listener,
     private final AtomicBoolean refreshInFlight = new AtomicBoolean();
     private final AtomicBoolean leaderboardRebuildScheduled = new AtomicBoolean();
     private final AtomicBoolean refreshFailureLogged = new AtomicBoolean();
+    private final AtomicBoolean walletSnapshotAvailable = new AtomicBoolean();
+    private final AtomicBoolean bankSnapshotAvailable = new AtomicBoolean();
     private volatile int refreshTaskId = -1;
     private volatile boolean closed;
 
@@ -72,6 +75,16 @@ final class PlaceholderEconomyCache implements PlaceholderBalanceView, Listener,
     public int leaderboardPosition(UUID playerId) {
         if (playerId == null) return 0;
         return leaderboardPositions.get().getOrDefault(playerId, 0);
+    }
+
+    @Override
+    public boolean walletSnapshotAvailable() {
+        return walletSnapshotAvailable.get();
+    }
+
+    @Override
+    public boolean bankSnapshotAvailable() {
+        return !bankingEnabled || bankSnapshotAvailable.get();
     }
 
     @EventHandler
@@ -109,7 +122,7 @@ final class PlaceholderEconomyCache implements PlaceholderBalanceView, Listener,
         if (playerId == null) return;
         bankLocalVersions.put(playerId, revision);
         // A bank journal delta has no bank-before value. Never invent a base balance before the
-        // first authoritative snapshot has loaded; the documented unavailable fallback remains 0.
+        // first authoritative snapshot has loaded; placeholders remain unavailable until that snapshot succeeds.
         bankBalances.computeIfPresent(playerId, (ignored, current) -> {
             try {
                 return Math.max(0L, Math.addExact(current, delta));
@@ -120,29 +133,63 @@ final class PlaceholderEconomyCache implements PlaceholderBalanceView, Listener,
     }
 
     private void refreshAsync() {
-        if (closed || !refreshInFlight.compareAndSet(false, true)) return;
+        refreshNow();
+    }
+
+    CompletableFuture<Boolean> refreshNow() {
+        if (closed || !refreshInFlight.compareAndSet(false, true)) {
+            return CompletableFuture.completedFuture(false);
+        }
         long revisionAtStart = localRevision.get();
-        CompletableFuture<Map<UUID, Long>> wallets = economyApi.getStoredBalancesMinorUnits();
-        CompletableFuture<Map<UUID, Long>> banks = bankingEnabled
-                ? economyApi.getStoredBankBalancesMinorUnits()
-                : CompletableFuture.completedFuture(Map.of());
-        wallets.thenCombine(banks, EconomySnapshot::new).whenComplete((snapshot, failure) -> {
-            refreshInFlight.set(false);
-            if (closed) return;
-            if (failure != null || snapshot == null) {
-                if (refreshFailureLogged.compareAndSet(false, true)) {
-                    plugin.getLogger().warning("[PlaceholderAPI] Could not refresh the presentation cache; "
-                            + "the previous snapshot remains active.");
-                }
-                return;
-            }
-            refreshFailureLogged.set(false);
-            synchronized (snapshotMergeLock) {
-                mergeSnapshot(walletBalances, walletLocalVersions, snapshot.wallets(), revisionAtStart);
-                mergeSnapshot(bankBalances, bankLocalVersions, snapshot.banks(), revisionAtStart);
-            }
-            rebuildLeaderboard();
-        });
+
+        CompletableFuture<Boolean> walletRefresh = safeSnapshotRead(economyApi::getStoredBalancesMinorUnits)
+                .handle((snapshot, failure) -> {
+                    if (failure != null || snapshot == null) return false;
+                    synchronized (snapshotMergeLock) {
+                        mergeSnapshot(walletBalances, walletLocalVersions, snapshot, revisionAtStart);
+                    }
+                    walletSnapshotAvailable.set(true);
+                    rebuildLeaderboard();
+                    return true;
+                });
+
+        CompletableFuture<Boolean> bankRefresh = bankingEnabled
+                ? safeSnapshotRead(economyApi::getStoredBankBalancesMinorUnits).handle((snapshot, failure) -> {
+                    if (failure != null || snapshot == null) return false;
+                    synchronized (snapshotMergeLock) {
+                        mergeSnapshot(bankBalances, bankLocalVersions, snapshot, revisionAtStart);
+                    }
+                    bankSnapshotAvailable.set(true);
+                    return true;
+                })
+                : CompletableFuture.completedFuture(true);
+
+        return walletRefresh.thenCombine(bankRefresh, (walletSucceeded, bankSucceeded) ->
+                        walletSucceeded && bankSucceeded)
+                .whenComplete((allSucceeded, ignored) -> {
+                    refreshInFlight.set(false);
+                    if (closed) return;
+                    if (!Boolean.TRUE.equals(allSucceeded)) {
+                        if (refreshFailureLogged.compareAndSet(false, true)) {
+                            plugin.getLogger().warning("[PlaceholderAPI] Could not refresh all economy presentation data; "
+                                    + "the last successful snapshot for each data source remains active.");
+                        }
+                        return;
+                    }
+                    refreshFailureLogged.set(false);
+                });
+    }
+
+    private static CompletableFuture<Map<UUID, Long>> safeSnapshotRead(
+            Supplier<CompletableFuture<Map<UUID, Long>>> read) {
+        try {
+            CompletableFuture<Map<UUID, Long>> future = read.get();
+            return future == null
+                    ? CompletableFuture.failedFuture(new IllegalStateException("Economy snapshot read returned no future"))
+                    : future;
+        } catch (RuntimeException failure) {
+            return CompletableFuture.failedFuture(failure);
+        }
     }
 
     private void scheduleLeaderboardRebuild() {
@@ -184,7 +231,7 @@ final class PlaceholderEconomyCache implements PlaceholderBalanceView, Listener,
         walletLocalVersions.clear();
         bankLocalVersions.clear();
         leaderboardPositions.set(Map.of());
+        walletSnapshotAvailable.set(false);
+        bankSnapshotAvailable.set(false);
     }
-
-    private record EconomySnapshot(Map<UUID, Long> wallets, Map<UUID, Long> banks) { }
 }

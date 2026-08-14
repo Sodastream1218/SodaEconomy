@@ -12,6 +12,8 @@ import java.util.function.Supplier;
 
 /** Pure placeholder parsing and formatting over an already-cached economy snapshot. */
 final class PlaceholderResolver {
+    static final String UNAVAILABLE_VALUE = "-";
+
     private final PlaceholderBalanceView balances;
     private final Supplier<RuntimeConfigSnapshot> runtimeSettings;
     private final boolean bankingEnabled;
@@ -33,20 +35,27 @@ final class PlaceholderResolver {
             return currency.symbol();
         }
 
+        boolean walletAvailable = playerId == null || balances.walletSnapshotAvailable();
+        boolean bankAvailable = playerId == null || !bankingEnabled || balances.bankSnapshotAvailable();
         long walletMinor = playerId == null ? 0L : balances.walletBalanceMinor(playerId);
         long bankMinor = playerId == null || !bankingEnabled ? 0L : balances.bankBalanceMinor(playerId);
 
         return switch (normalized) {
-            case "balance" -> PlaceholderValueFormatter.rawMinor(walletMinor);
-            case "balance_formatted" -> CurrencyFormatter.formatMinorUnits(walletMinor, currency);
-            case "balance_short" -> PlaceholderValueFormatter.shortMinor(walletMinor);
-            case "bank_balance" -> PlaceholderValueFormatter.rawMinor(bankMinor);
-            case "bank_balance_formatted" -> CurrencyFormatter.formatMinorUnits(bankMinor, currency);
-            case "total_balance" -> PlaceholderValueFormatter.rawMajor(
-                    PlaceholderValueFormatter.totalMajor(walletMinor, bankMinor));
-            case "total_balance_formatted" -> CurrencyFormatter.formatMajorUnits(
-                    PlaceholderValueFormatter.totalMajor(walletMinor, bankMinor), currency);
-            case "rank", "baltop_position" -> resolveRank(playerId, settings.leaderboard());
+            case "balance" -> walletAvailable ? PlaceholderValueFormatter.rawMinor(walletMinor) : UNAVAILABLE_VALUE;
+            case "balance_formatted" -> walletAvailable
+                    ? CurrencyFormatter.formatMinorUnits(walletMinor, currency) : UNAVAILABLE_VALUE;
+            case "balance_short" -> walletAvailable ? PlaceholderValueFormatter.shortMinor(walletMinor) : UNAVAILABLE_VALUE;
+            case "bank_balance" -> bankAvailable ? PlaceholderValueFormatter.rawMinor(bankMinor) : UNAVAILABLE_VALUE;
+            case "bank_balance_formatted" -> bankAvailable
+                    ? CurrencyFormatter.formatMinorUnits(bankMinor, currency) : UNAVAILABLE_VALUE;
+            case "total_balance" -> walletAvailable && bankAvailable
+                    ? PlaceholderValueFormatter.rawMajor(PlaceholderValueFormatter.totalMajor(walletMinor, bankMinor))
+                    : UNAVAILABLE_VALUE;
+            case "total_balance_formatted" -> walletAvailable && bankAvailable
+                    ? CurrencyFormatter.formatMajorUnits(PlaceholderValueFormatter.totalMajor(walletMinor, bankMinor), currency)
+                    : UNAVAILABLE_VALUE;
+            case "rank", "baltop_position" -> walletAvailable
+                    ? resolveRank(playerId, settings.leaderboard()) : UNAVAILABLE_VALUE;
             default -> null;
         };
     }

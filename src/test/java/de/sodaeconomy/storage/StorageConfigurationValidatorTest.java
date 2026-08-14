@@ -43,7 +43,7 @@ class StorageConfigurationValidatorTest {
         YamlConfiguration configuration = completeMySqlConfiguration();
         configuration.set("storage.mysql.database", " ");
 
-        assertProblem(configuration, "Datenbank");
+        assertProblem(configuration, "Database");
     }
 
     @Test
@@ -51,7 +51,7 @@ class StorageConfigurationValidatorTest {
         YamlConfiguration configuration = completeMySqlConfiguration();
         configuration.set("storage.mysql.user", "");
 
-        assertProblem(configuration, "Benutzername");
+        assertProblem(configuration, "Username");
     }
 
     @Test
@@ -59,7 +59,7 @@ class StorageConfigurationValidatorTest {
         YamlConfiguration configuration = completeMySqlConfiguration();
         configuration.set("storage.mysql.password", null);
 
-        assertProblem(configuration, "Passwort");
+        assertProblem(configuration, "Password");
     }
 
     @Test

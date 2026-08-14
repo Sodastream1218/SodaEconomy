@@ -82,7 +82,7 @@ The smoke test for every line must cover:
 Cross-version support does not replace the existing integration tests. Before release, also run:
 
 ```bash
-SODAECONOMY_TEST_MYSQL=true ./mvnw verify
+SODAECONOMY_TEST_MYSQL=true ./gradlew mysqlIntegrationTest
 ```
 
 against an isolated MySQL or MariaDB test database. The integration suite verifies schema version 6,

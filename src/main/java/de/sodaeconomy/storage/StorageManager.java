@@ -40,8 +40,8 @@ public class StorageManager {
         LastStorageState lastState = readLastStorageState();
         if (lastState.status() == MarkerStatus.INVALID) {
             throw new StorageStartupException(StorageStartupException.Kind.STATE_PERSISTENCE_FAILED,
-                    "Der Storage-Status konnte nicht sicher gelesen werden. Bitte prüfe last-storage-type.txt. "
-                            + "Es wurden keine Daten migriert oder überschrieben.");
+                    "The storage state could not be read safely. Check last-storage-type.txt. "
+                            + "No data was migrated or overwritten.");
         }
 
         StorageType lastType = lastState.type();
@@ -85,7 +85,7 @@ public class StorageManager {
             targetSnapshot = migrationManager.readSnapshot(target, desiredType);
             if (!targetSnapshot.isEmpty()) {
                 throw migrationFailure(lastType, desiredType,
-                        "Das Zielsystem enthält bereits Daten. Zur Vermeidung von Datenvermischung wurde nicht migriert.", null);
+                        "The target storage already contains data. Migration was refused to prevent data sets from being mixed.", null);
             }
 
             Storage source = null;
@@ -152,13 +152,12 @@ public class StorageManager {
             return;
         }
         throw new StorageStartupException(StorageStartupException.Kind.MIGRATION_FAILED,
-                "Die Migration von MYSQL nach " + targetType + " wurde aus Sicherheitsgründen abgebrochen.\n"
-                        + "Eine MySQL-Datenbank kann von mehreren Paper-/Purpur-Servern gleichzeitig genutzt werden. "
-                        + "Wenn dieser Server jetzt auf einen lokalen Storage migriert, schreiben andere Server "
-                        + "möglicherweise weiterhin in MySQL; der lokale Snapshot wäre sofort veraltet und spätere "
-                        + "Änderungen könnten verloren gehen.\n"
-                        + "Setze storage.migration.confirm-single-server-mysql nur dann auf true, wenn wirklich nur "
-                        + "dieser eine Server die MySQL-Datenbank verwendet und alle anderen Instanzen gestoppt sind.");
+                "Migration from MYSQL to " + targetType + " was stopped for safety.\n"
+                        + "A MySQL/MariaDB database may be shared by multiple Paper/Purpur servers. If this server "
+                        + "migrates to local storage while another instance keeps writing to MYSQL, the local snapshot "
+                        + "would immediately become stale and later changes could be lost.\n"
+                        + "Set storage.migration.confirm-single-server-mysql to true only when this is the only server "
+                        + "using the database and every other instance has been stopped.");
     }
 
     private boolean isMigrationDryRunEnabled() {
@@ -250,8 +249,8 @@ public class StorageManager {
         } catch (Exception exception) {
             closeQuietly(fallback);
             throw new StorageStartupException(StorageStartupException.Kind.STATE_PERSISTENCE_FAILED,
-                    "Die MySQL-Konfiguration ist ungültig und der sichere Fallback auf " + lastType
-                            + " konnte nicht vollständig übernommen werden. Die Konfiguration wurde nicht geändert.", exception);
+                    "The MySQL configuration is invalid and the safe fallback to " + lastType
+                            + " could not be completed. The configuration was not changed.", exception);
         }
     }
 
@@ -280,17 +279,16 @@ public class StorageManager {
             JdbcDriverUnavailableException missingDriver = findCause(exception, JdbcDriverUnavailableException.class);
             String message;
             if (missingDriver != null) {
-                message = "Der externe JDBC-Treiber für MYSQL konnte nicht geladen werden. "
-                        + missingDriver.getMessage() + " Der Server wurde ohne Datenänderung angehalten; "
-                        + "prüfe Internetzugriff bzw. den Paper-Library-Cache und starte anschließend neu.";
+                message = "The external JDBC driver for MYSQL could not be loaded. "
+                        + missingDriver.getMessage() + " The server was stopped without changing economy data; "
+                        + "check network access and Paper's library cache, then restart the server.";
             } else if (targetType == StorageType.MYSQL) {
-                message = "Die MYSQL-Konfiguration ist gültig, aber der MySQL-/MariaDB-Server ist derzeit nicht "
-                        + "erreichbar oder konnte nicht initialisiert werden. Es wurde kein Fallback verwendet, keine "
-                        + "Migration durchgeführt und weder config.yml noch der Storage-Status geändert. Bitte prüfe "
-                        + "Erreichbarkeit, Netzwerk, Zugangsdaten und Berechtigungen.";
+                message = "The MYSQL configuration is valid, but the MySQL/MariaDB server is currently unreachable or could "
+                        + "not be initialized. No fallback or migration was used, and neither config.yml nor the storage "
+                        + "state was changed. Check database availability, networking, credentials, and privileges.";
             } else {
-                message = "Das ausgewählte Storage-System " + targetType + " konnte nicht initialisiert werden. "
-                        + "Es wurden keine Daten migriert und kein Storage-Status geändert.";
+                message = "The selected storage system " + targetType + " could not be initialized. "
+                        + "No data was migrated and the storage state was not changed.";
             }
             throw new StorageStartupException(StorageStartupException.Kind.TARGET_UNAVAILABLE, message, exception);
         }
@@ -301,7 +299,7 @@ public class StorageManager {
             return initializeStorage(sourceType, "Source");
         } catch (Exception exception) {
             throw migrationFailure(sourceType, targetType,
-                    "Die bisherige Datenquelle konnte nicht geöffnet werden.", exception);
+                    "The previous storage source could not be opened.", exception);
         }
     }
 
@@ -323,8 +321,8 @@ public class StorageManager {
                 writeLastType(type);
             } catch (IOException exception) {
                 throw new StorageStartupException(StorageStartupException.Kind.STATE_PERSISTENCE_FAILED,
-                        "Der Storage-Wechsel konnte nicht sicher abgeschlossen werden, weil last-storage-type.txt nicht gespeichert werden konnte. "
-                                + "Es wurden keine neuen Daten als aktiv übernommen.", exception);
+                        "The storage switch could not be completed safely because last-storage-type.txt could not be saved. "
+                                + "No new data set was activated.", exception);
             }
         }
         current = storage;
@@ -333,8 +331,8 @@ public class StorageManager {
 
     private StorageStartupException migrationFailure(StorageType sourceType, StorageType targetType,
                                                       String detail, Throwable cause) {
-        String message = "Die Migration von " + sourceType + " nach " + targetType + " wurde abgebrochen. "
-                + "Der Storage-Status und die Konfiguration wurden nicht geändert; die Quelldaten bleiben unverändert."
+        String message = "Migration from " + sourceType + " to " + targetType + " was aborted. "
+                + "The storage state and configuration were not changed; the source data remains untouched."
                 + (detail == null ? "" : " " + detail);
         return cause == null
                 ? new StorageStartupException(StorageStartupException.Kind.MIGRATION_FAILED, message)
@@ -342,8 +340,8 @@ public class StorageManager {
     }
 
     private String configurationProblemMessage(StorageConfigurationValidator.ValidationResult validation) {
-        StringBuilder message = new StringBuilder("MySQL wurde als Storage ausgewählt, jedoch sind die Verbindungsdaten unvollständig oder ungültig.\n"
-                + "Bitte überprüfe:");
+        StringBuilder message = new StringBuilder("MYSQL was selected as storage, but the connection settings are incomplete or invalid.\n"
+                + "Check the following:");
         for (String problem : validation.problems()) message.append("\n- ").append(problem);
         return message.toString();
     }
@@ -360,7 +358,7 @@ public class StorageManager {
      * Legacy low-level batch persistence access. Not part of the supported public API; use
      * EconomyTransactionApi instead so journal and balance state remain consistent.
      */
-    @Deprecated(since = "1.1", forRemoval = true)
+    @Deprecated(since = "1.0", forRemoval = true)
     public void saveAll(Map<UUID, Double> data) throws Exception {
         StorageAccessGuard.requireInternalCaller("StorageManager.saveAll", StorageManager.class);
         if (current != null) current.saveAll(data);
@@ -370,7 +368,7 @@ public class StorageManager {
      * Legacy internal storage accessor. Not part of the supported public API; returned storage
      * instances reject external low-level mutations at runtime.
      */
-    @Deprecated(since = "1.1", forRemoval = true)
+    @Deprecated(since = "1.0", forRemoval = true)
     public Storage getCurrent() {
         return current;
     }

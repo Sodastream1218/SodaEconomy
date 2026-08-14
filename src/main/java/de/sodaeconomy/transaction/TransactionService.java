@@ -80,12 +80,11 @@ public final class TransactionService implements EconomyTransactionApi, AutoClos
         transactionLock.lock();
         try {
             if (!acceptingRequests.get()) {
-                return 0D;
+                throw new IllegalStateException("The transaction service is stopping");
             }
             return Money.fromMinorUnits(store.ensureWalletAccount(playerId, startingBalanceMinor, clock.instant()).balanceMinor());
         } catch (Exception exception) {
-            logStorageFailure("read or create wallet account", exception);
-            return 0D;
+            throw readFailure("read or create wallet account", exception);
         } finally {
             transactionLock.unlock();
         }
@@ -100,14 +99,13 @@ public final class TransactionService implements EconomyTransactionApi, AutoClos
         transactionLock.lock();
         try {
             if (!acceptingRequests.get()) {
-                return 0D;
+                throw new IllegalStateException("The transaction service is stopping");
             }
             store.ensureWalletAccount(playerId, startingBalanceMinor, clock.instant());
             Double balance = storage.getBankBalance(playerId);
             return balance == null ? 0D : Money.normalize(balance);
         } catch (Exception exception) {
-            logStorageFailure("read or create bank account", exception);
-            return 0D;
+            throw readFailure("read or create bank account", exception);
         } finally {
             transactionLock.unlock();
         }
@@ -145,12 +143,11 @@ public final class TransactionService implements EconomyTransactionApi, AutoClos
         transactionLock.lock();
         try {
             if (!acceptingRequests.get()) {
-                return Map.of();
+                throw new IllegalStateException("The transaction service is stopping");
             }
             return Map.copyOf(storage.getAllBankBalances());
         } catch (Exception exception) {
-            logStorageFailure("read bank balances", exception);
-            return Map.of();
+            throw readFailure("read bank balances", exception);
         } finally {
             transactionLock.unlock();
         }
@@ -328,10 +325,10 @@ public final class TransactionService implements EconomyTransactionApi, AutoClos
         return submitAsync(() -> {
             transactionLock.lock();
             try {
-                return acceptingRequests.get() ? Map.copyOf(storage.getAllBalances()) : Map.of();
+                if (!acceptingRequests.get()) throw new IllegalStateException("The transaction service is stopping");
+                return Map.copyOf(storage.getAllBalances());
             } catch (Exception exception) {
-                logStorageFailure("read wallet balances", exception);
-                return Map.of();
+                throw readFailure("read wallet balances", exception);
             } finally {
                 transactionLock.unlock();
             }
@@ -343,10 +340,10 @@ public final class TransactionService implements EconomyTransactionApi, AutoClos
         return submitAsync(() -> {
             transactionLock.lock();
             try {
-                return acceptingRequests.get() ? Map.copyOf(storage.getAllBalanceMinorUnits()) : Map.of();
+                if (!acceptingRequests.get()) throw new IllegalStateException("The transaction service is stopping");
+                return Map.copyOf(storage.getAllBalanceMinorUnits());
             } catch (Exception exception) {
-                logStorageFailure("read exact wallet balance snapshot", exception);
-                return Map.of();
+                throw readFailure("read exact wallet balance snapshot", exception);
             } finally {
                 transactionLock.unlock();
             }
@@ -358,10 +355,10 @@ public final class TransactionService implements EconomyTransactionApi, AutoClos
         return submitAsync(() -> {
             transactionLock.lock();
             try {
-                return acceptingRequests.get() ? Map.copyOf(storage.getAllBankBalanceMinorUnits()) : Map.of();
+                if (!acceptingRequests.get()) throw new IllegalStateException("The transaction service is stopping");
+                return Map.copyOf(storage.getAllBankBalanceMinorUnits());
             } catch (Exception exception) {
-                logStorageFailure("read exact bank balance snapshot", exception);
-                return Map.of();
+                throw readFailure("read exact bank balance snapshot", exception);
             } finally {
                 transactionLock.unlock();
             }
@@ -592,6 +589,58 @@ public final class TransactionService implements EconomyTransactionApi, AutoClos
     }
 
     @Override
+    public CompletableFuture<TransactionResult> depositMinor(UUID targetPlayerId, long amountMinor,
+                                                              TransactionOrigin origin,
+                                                              TransactionRequestOptions options) {
+        if (!isApiOrigin(origin) || amountMinor <= 0L) {
+            return CompletableFuture.completedFuture(!isApiOrigin(origin) ? invalidRequest() : invalidAmount());
+        }
+        TransactionRequestOptions requestOptions = Objects.requireNonNull(options, "options");
+        return submitPersistedResult(() -> executeBuiltRequest(() -> requestForCreditMinor(targetPlayerId, amountMinor,
+                TransactionType.API_DEPOSIT, origin, requestOptions.reason(), requestOptions.metadata(), null, null,
+                requestOptions.idempotencyKey())));
+    }
+
+    @Override
+    public CompletableFuture<TransactionResult> withdrawMinor(UUID sourcePlayerId, long amountMinor,
+                                                               TransactionOrigin origin,
+                                                               TransactionRequestOptions options) {
+        if (!isApiOrigin(origin) || amountMinor <= 0L) {
+            return CompletableFuture.completedFuture(!isApiOrigin(origin) ? invalidRequest() : invalidAmount());
+        }
+        TransactionRequestOptions requestOptions = Objects.requireNonNull(options, "options");
+        return submitPersistedResult(() -> executeBuiltRequest(() -> requestForDebitMinor(sourcePlayerId, amountMinor,
+                TransactionType.API_WITHDRAW, origin, requestOptions.reason(), requestOptions.metadata(), null, null,
+                requestOptions.idempotencyKey())));
+    }
+
+    @Override
+    public CompletableFuture<TransactionResult> transferMinor(UUID sourcePlayerId, UUID targetPlayerId, long amountMinor,
+                                                               TransactionOrigin origin,
+                                                               TransactionRequestOptions options) {
+        if (!isApiOrigin(origin) || amountMinor <= 0L) {
+            return CompletableFuture.completedFuture(!isApiOrigin(origin) ? invalidRequest() : invalidAmount());
+        }
+        TransactionRequestOptions requestOptions = Objects.requireNonNull(options, "options");
+        return submitPersistedResult(() -> executeBuiltRequest(() -> requestForTransferMinor(sourcePlayerId,
+                targetPlayerId, amountMinor, TransactionType.API_TRANSFER, origin, requestOptions.reason(),
+                requestOptions.metadata(), null, null, requestOptions.idempotencyKey())));
+    }
+
+    @Override
+    public CompletableFuture<TransactionResult> setBalanceMinor(UUID targetPlayerId, long targetBalanceMinor,
+                                                                 TransactionOrigin origin,
+                                                                 TransactionRequestOptions options) {
+        if (!isApiOrigin(origin) || targetBalanceMinor < 0L) {
+            return CompletableFuture.completedFuture(!isApiOrigin(origin) ? invalidRequest() : invalidAmount());
+        }
+        TransactionRequestOptions requestOptions = Objects.requireNonNull(options, "options");
+        return submitPersistedResult(() -> executeBuiltRequest(() -> requestForSetMinor(targetPlayerId,
+                targetBalanceMinor, TransactionType.API_SET, origin, requestOptions.reason(), requestOptions.metadata(),
+                null, null, requestOptions.idempotencyKey())));
+    }
+
+    @Override
     public CompletableFuture<TransactionResult> rollback(UUID transactionId, TransactionOrigin origin, String reason) {
         if (!isApiOrigin(origin)) {
             return CompletableFuture.completedFuture(invalidRequest());
@@ -653,8 +702,7 @@ public final class TransactionService implements EconomyTransactionApi, AutoClos
             try {
                 return store.findTransactions(Objects.requireNonNullElseGet(query, TransactionQuery::recent));
             } catch (Exception exception) {
-                logStorageFailure("query wallet transaction history", exception);
-                return new TransactionPage(java.util.List.of(), 0, TransactionQuery.DEFAULT_LIMIT, false);
+                throw readFailure("query wallet transaction history", exception);
             }
         });
     }
@@ -665,8 +713,7 @@ public final class TransactionService implements EconomyTransactionApi, AutoClos
             try {
                 return store.getEconomyStatistics();
             } catch (Exception exception) {
-                logStorageFailure("query economy statistics", exception);
-                return new EconomyStatistics(0L, 0L, null, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
+                throw readFailure("query economy statistics", exception);
             }
         });
     }
@@ -677,8 +724,7 @@ public final class TransactionService implements EconomyTransactionApi, AutoClos
             try {
                 return store.getEconomyAnalytics();
             } catch (Exception exception) {
-                logStorageFailure("query extended economy statistics", exception);
-                return emptyAnalytics();
+                throw readFailure("query extended economy statistics", exception);
             }
         });
     }
@@ -692,8 +738,7 @@ public final class TransactionService implements EconomyTransactionApi, AutoClos
             try {
                 return store.getPlayerTransactionStatistics(playerId);
             } catch (Exception exception) {
-                logStorageFailure("query player transaction statistics", exception);
-                return emptyPlayerStatistics(playerId);
+                throw readFailure("query player transaction statistics", exception);
             }
         });
     }
@@ -718,8 +763,7 @@ public final class TransactionService implements EconomyTransactionApi, AutoClos
                 }
                 return Money.normalize(balance);
             } catch (Exception exception) {
-                logStorageFailure("query stored wallet balance", exception);
-                return 0D;
+                throw readFailure("query stored wallet balance", exception);
             }
         });
     }
@@ -729,8 +773,7 @@ public final class TransactionService implements EconomyTransactionApi, AutoClos
         try {
             return store.getEconomyStatistics();
         } catch (Exception exception) {
-            logStorageFailure("query economy statistics", exception);
-            return new EconomyStatistics(0L, 0L, null, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
+            throw readFailure("query economy statistics", exception);
         }
     }
 
@@ -1012,7 +1055,15 @@ public final class TransactionService implements EconomyTransactionApi, AutoClos
     private WalletTransactionRequest requestForSet(UUID target, double balance, TransactionType type,
                                                     TransactionOrigin origin, String reason, Map<String, String> metadata,
                                                     UUID reversalOf, UUID batchId, String idempotencyKey) {
-        long targetMinor = nonNegativeMinor(balance);
+        return requestForSetMinor(target, nonNegativeMinor(balance), type, origin, reason, metadata, reversalOf, batchId,
+                idempotencyKey);
+    }
+
+    private WalletTransactionRequest requestForSetMinor(UUID target, long targetMinor, TransactionType type,
+                                                         TransactionOrigin origin, String reason,
+                                                         Map<String, String> metadata, UUID reversalOf, UUID batchId,
+                                                         String idempotencyKey) {
+        if (targetMinor < 0L) throw new IllegalArgumentException("The balance must be non-negative");
         return new WalletTransactionRequest(UUID.randomUUID(), now(), requireType(type), requireOrigin(origin),
                 WalletOperation.SET, null, requirePlayer(target), targetMinor, targetMinor, reason, metadata,
                 reversalOf, batchId, idempotencyKey);
@@ -1201,6 +1252,13 @@ public final class TransactionService implements EconomyTransactionApi, AutoClos
         } else {
             Bukkit.getScheduler().runTask(plugin, publisher);
         }
+    }
+
+    private StorageReadException readFailure(String operation, Exception exception) {
+        logStorageFailure(operation, exception);
+        return exception instanceof StorageReadException storageReadException
+                ? storageReadException
+                : new StorageReadException(operation, exception);
     }
 
     private void logStorageFailure(String operation, Exception exception) {

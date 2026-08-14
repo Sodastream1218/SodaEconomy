@@ -3,36 +3,36 @@ version: 1.0.0
 main: de.sodaeconomy.SodaEconomy
 api-version: 1.20
 author: Sodastreamexpres
-description: Professionelles Economy-System mit Transaktionsjournal, Storage-Migrationen und auditierbarer API.
+description: Production-focused economy system with an immutable transaction journal, safe storage migrations, and an auditable API.
 softdepend: [Vault, floodgate, PlaceholderAPI]
 libraries:
   - org.mariadb.jdbc:mariadb-java-client:3.5.9
 
 commands:
   balance:
-    description: Zeigt dein aktuelles Guthaben an
+    description: Shows your current wallet balance
     usage: /balance
   topbalance:
-    description: Zeigt die reichsten Spieler an
+    description: Shows the richest players
     usage: /topbalance
     permission: sodaeconomy.topbalance
   pay:
-    description: Überweise einem anderen Spieler Geld
-    usage: /pay <Spieler> <Betrag>
+    description: Transfers money to another player
+    usage: /pay <player> <amount>
   eco:
     description: Economy administration, transaction history, audit, and statistics
     usage: /eco <history|transaction|rollback|audit|stats|reload|set|give|remove|reset|balance|payall|multipay>
   bank:
-    description: Bank-Befehle (/bank balance, deposit, withdraw, setbalance)
+    description: Bank commands (/bank balance, deposit, withdraw, setbalance)
     usage: /bank <balance|deposit|withdraw|setbalance>
     permission: sodaeconomy.bank.use
 
 permissions:
   sodaeconomy.admin:
-    description: Erlaubt die Nutzung aller Admin Economy Befehle
+    description: Allows all SodaEconomy administrator commands
     default: op
   sodaeconomy.admin.reload:
-    description: Erlaubt das sichere Neuladen von Sprache, Sprachdateien, Prefix, Bestenliste und Währungsanzeige
+    description: Allows safe reload of language, message files, prefix, leaderboard, and currency display settings
     default: op
   sodaeconomy.history.self:
     description: Allows viewing personal transaction history
@@ -53,11 +53,11 @@ permissions:
     description: Allows viewing economy statistics
     default: op
   sodaeconomy.topbalance:
-    description: Erlaubt die Nutzung von /topbalance
+    description: Allows use of /topbalance
     default: true
   sodaeconomy.bank.use:
-    description: Erlaubt die Nutzung der Bankbefehle
+    description: Allows use of player bank commands
     default: true
   sodaeconomy.bank.admin:
-    description: Erlaubt die Nutzung von /bank setbalance
+    description: Allows use of /bank setbalance
     default: op

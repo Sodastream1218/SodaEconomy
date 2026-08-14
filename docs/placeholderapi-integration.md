@@ -14,7 +14,7 @@ The expansion identifier is `sodaeconomy`, so all placeholders use the
 | `%sodaeconomy_balance%` | Exact cached wallet balance, fixed to two decimals | `12500.50` | Required for non-zero player value |
 | `%sodaeconomy_balance_formatted%` | Wallet balance using SodaEconomy's live currency display settings | `$12500.50` | Required for non-zero player value |
 | `%sodaeconomy_balance_short%` | Compact wallet balance using `K`, `M`, `B`, `T` suffixes | `12.5K` | Required for non-zero player value |
-| `%sodaeconomy_bank_balance%` | Cached personal bank balance; `0.00` when banking/account is unavailable | `50000.00` | Required for non-zero player value |
+| `%sodaeconomy_bank_balance%` | Cached personal bank balance; `0.00` when banking is disabled or the valid snapshot has no bank value | `50000.00` | Required for non-zero player value |
 | `%sodaeconomy_bank_balance_formatted%` | Bank balance using SodaEconomy's live currency display settings | `$50000.00` | Required for non-zero player value |
 | `%sodaeconomy_total_balance%` | Wallet plus the personal bank balance when banking is enabled | `62500.50` | Required for non-zero player value |
 | `%sodaeconomy_total_balance_formatted%` | Total balance using SodaEconomy's live currency display settings | `$62500.50` | Required for non-zero player value |
@@ -24,6 +24,10 @@ The expansion identifier is `sodaeconomy`, so all placeholders use the
 
 Unknown placeholder identifiers return `null` to PlaceholderAPI so they remain invalid placeholders.
 A null/missing player context resolves monetary player values as zero and ranking values as `-`.
+For a real player UUID, `-` means SodaEconomy has not yet obtained any successful authoritative
+snapshot for the data required by that placeholder. A backend refresh failure after a successful
+snapshot does **not** replace cached values with zero or an empty map; the last successful snapshot
+remains active until a newer successful read is available.
 Offline players are supported when PlaceholderAPI supplies their UUID and that account exists in the current cached
 economy snapshot; the callback never performs an offline-player lookup or other Bukkit/Paper I/O.
 
@@ -62,9 +66,22 @@ and changes committed by another Paper instance in a shared MySQL/MariaDB networ
 | currency symbol / formatted values | current `RuntimeConfigSnapshot.CurrencySettings` | none | O(1) |
 | leaderboard position | cached positions built from the same exact wallet snapshot and shared ranking rules used by `/topbalance` | none | O(1) |
 
-The refresh task is coalesced so overlapping persistent snapshot reads are never started. Local
-transaction updates are revision-protected so an older background snapshot cannot overwrite a
-newer confirmed local balance.
+The refresh task is coalesced so overlapping persistent snapshot reads are never started. Wallet and
+bank sources are refreshed independently: if one source fails, its last successful snapshot stays
+active while the healthy source may still advance. Local transaction updates are revision-protected
+so an older background snapshot cannot overwrite a newer confirmed local balance.
+
+### Backend failure safety
+
+Persistent snapshot methods complete exceptionally on backend read failures. The cache treats that
+as transport/backend unavailability, never as a valid empty economy. Therefore:
+
+- a valid empty wallet snapshot can intentionally clear cached wallet entries;
+- a failed wallet refresh cannot clear a previously valid wallet snapshot;
+- a failed bank refresh cannot replace bank balances with zeros;
+- before the first successful required snapshot, player-value placeholders return `-`;
+- `currency_symbol` remains available because it comes only from the current runtime config; and
+- PlaceholderAPI callbacks still perform no SQL, disk I/O, waits, or retry loops.
 
 ## Formatting and precision
 

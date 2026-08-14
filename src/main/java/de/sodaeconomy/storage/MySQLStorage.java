@@ -99,7 +99,7 @@ public class MySQLStorage implements Storage, WalletTransactionStore, StorageMai
         String host = plugin.getConfig().getString("storage.mysql.host", "localhost");
         int port = plugin.getConfig().getInt("storage.mysql.port", 3306);
         String database = plugin.getConfig().getString("storage.mysql.database", "sodaeconomy");
-        user = plugin.getConfig().getString("storage.mysql.user", "root");
+        user = plugin.getConfig().getString("storage.mysql.user", "sodaeconomy");
         password = plugin.getConfig().getString("storage.mysql.password", "");
         MariaDbJdbcConfiguration.Result jdbcConfiguration = MariaDbJdbcConfiguration.create(
                 host, port, database, readConnectionParameters(

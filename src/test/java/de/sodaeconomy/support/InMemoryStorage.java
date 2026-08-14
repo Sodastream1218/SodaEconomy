@@ -28,15 +28,30 @@ import java.util.Set;
 import java.util.UUID;
 
 /** Deterministic transaction-capable storage implementation for service tests. */
-public final class InMemoryStorage implements Storage, WalletTransactionStore {
+public class InMemoryStorage implements Storage, WalletTransactionStore {
     private final Map<UUID, Double> balances = new HashMap<>();
     private final Map<UUID, Double> bankBalances = new HashMap<>();
     private final Map<UUID, TransactionRecord> transactions = new LinkedHashMap<>();
     private final Map<UUID, PlayerIdentity> playerIdentities = new HashMap<>();
     private int accountCreationAttempts;
+    private boolean failReads;
+
+    public synchronized void setFailReads(boolean failReads) {
+        this.failReads = failReads;
+    }
+
+    public synchronized void clearBalancesForTest() {
+        balances.clear();
+        bankBalances.clear();
+    }
+
+
+    private void failReadIfRequested() {
+        if (failReads) throw new IllegalStateException("Simulated storage read failure");
+    }
 
     @Override public void init(JavaPlugin plugin) { }
-    @Override public synchronized Double getBalance(UUID uuid) { return balances.get(uuid); }
+    @Override public synchronized Double getBalance(UUID uuid) { failReadIfRequested(); return balances.get(uuid); }
     @Override public synchronized double getOrCreateBalance(UUID uuid, double initialBalance) {
         accountCreationAttempts++;
         double balance = balances.computeIfAbsent(uuid, ignored -> Money.normalize(initialBalance));
@@ -44,7 +59,7 @@ public final class InMemoryStorage implements Storage, WalletTransactionStore {
         return balance;
     }
     @Override public synchronized void setBalance(UUID uuid, double amount) { balances.put(uuid, Money.normalize(amount)); }
-    @Override public synchronized Map<UUID, Double> getAllBalances() { return Map.copyOf(balances); }
+    @Override public synchronized Map<UUID, Double> getAllBalances() { failReadIfRequested(); return Map.copyOf(balances); }
     @Override public synchronized void saveAll(Map<UUID, Double> values) { values.forEach(this::setBalance); }
     @Override public synchronized Map<UUID, PlayerIdentity> getAllPlayerIdentities() {
         return Map.copyOf(playerIdentities);
@@ -72,9 +87,9 @@ public final class InMemoryStorage implements Storage, WalletTransactionStore {
         playerIdentities.putAll(identities);
     }
 
-    @Override public synchronized Double getBankBalance(UUID uuid) { return bankBalances.get(uuid); }
+    @Override public synchronized Double getBankBalance(UUID uuid) { failReadIfRequested(); return bankBalances.get(uuid); }
     @Override public synchronized void setBankBalance(UUID uuid, double amount) { bankBalances.put(uuid, Money.normalize(amount)); }
-    @Override public synchronized Map<UUID, Double> getAllBankBalances() { return Map.copyOf(bankBalances); }
+    @Override public synchronized Map<UUID, Double> getAllBankBalances() { failReadIfRequested(); return Map.copyOf(bankBalances); }
     @Override public synchronized void saveAllBank(Map<UUID, Double> values) { values.forEach(this::setBankBalance); }
 
     @Override
@@ -108,6 +123,7 @@ public final class InMemoryStorage implements Storage, WalletTransactionStore {
 
     @Override
     public synchronized WalletAccountState ensureWalletAccount(UUID playerId, long startingBalanceMinor, Instant timestamp) {
+        failReadIfRequested();
         Double existing = balances.get(playerId);
         if (existing != null) return new WalletAccountState(Money.toMinorUnits(existing), false);
         double balance = Money.fromMinorUnits(startingBalanceMinor);
@@ -292,6 +308,7 @@ public final class InMemoryStorage implements Storage, WalletTransactionStore {
 
     @Override
     public synchronized TransactionPage findTransactions(TransactionQuery query) {
+        failReadIfRequested();
         List<TransactionRecord> filtered = transactions.values().stream()
                 .filter(record -> matches(record, query))
                 .sorted(Comparator.comparing(TransactionRecord::timestamp).reversed()
@@ -304,6 +321,7 @@ public final class InMemoryStorage implements Storage, WalletTransactionStore {
 
     @Override
     public synchronized EconomyStatistics getEconomyStatistics() {
+        failReadIfRequested();
         long totalBalance = balances.values().stream().mapToLong(Money::toMinorUnits).sum();
         Map.Entry<UUID, Double> richest = balances.entrySet().stream()
                 .max((left, right) -> {
@@ -326,7 +344,7 @@ public final class InMemoryStorage implements Storage, WalletTransactionStore {
                 failures, cancelled, credits, debits);
     }
 
-    @Override public synchronized List<TransactionRecord> getAllWalletTransactions() { return List.copyOf(transactions.values()); }
+    @Override public synchronized List<TransactionRecord> getAllWalletTransactions() { failReadIfRequested(); return List.copyOf(transactions.values()); }
 
     private boolean matches(TransactionRecord record, TransactionQuery query) {
         if (query.transactionId() != null && !query.transactionId().equals(record.id())) return false;

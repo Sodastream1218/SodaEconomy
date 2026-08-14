@@ -10,7 +10,7 @@
     <packaging>jar</packaging>
 
     <name>SodaEconomy</name>
-    <description>Ein fortschrittliches Wirtschaftssystem für Minecraft Paper</description>
+    <description>A production-focused economy system for Minecraft Paper</description>
 
     <properties>
         <java.version>17</java.version>
@@ -116,7 +116,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Plugin Jar erzeugen -->
+            <!-- Build the plugin JAR. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>

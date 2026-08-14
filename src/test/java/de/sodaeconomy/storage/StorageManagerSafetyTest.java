@@ -185,7 +185,7 @@ class StorageManagerSafetyTest extends MockBukkitTestBase {
                 () -> manager.init(StorageType.YAML));
 
         assertEquals(StorageStartupException.Kind.MIGRATION_FAILED, failure.getKind());
-        assertTrue(failure.getMessage().contains("MYSQL nach YAML"));
+        assertTrue(failure.getMessage().contains("Migration from MYSQL to YAML"));
         assertTrue(states.get(StorageType.YAML).balances.isEmpty());
         assertFalse(events.contains("MYSQL:read-main"));
         assertTrue(events.contains("MYSQL:maintenance-release"));

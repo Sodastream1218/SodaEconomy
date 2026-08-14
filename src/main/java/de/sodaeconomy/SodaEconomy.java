@@ -280,7 +280,7 @@ public class SodaEconomy extends JavaPlugin {
      * {@link EconomyTransactionApi} from Bukkit's ServicesManager instead of mutating through a
      * manager implementation.
      */
-    @Deprecated(since = "1.1", forRemoval = true)
+    @Deprecated(since = "1.0", forRemoval = true)
     public EconomyManager getEconomyManager() {
         warnIfExternalLegacyAccess("SodaEconomy#getEconomyManager()", warnedEconomyManagerAccess);
         return economyManager;
@@ -291,14 +291,14 @@ public class SodaEconomy extends JavaPlugin {
      * internal-storage access bypasses the supported transaction API and will be removed in the
      * next major release.
      */
-    @Deprecated(since = "1.1", forRemoval = true)
+    @Deprecated(since = "1.0", forRemoval = true)
     public StorageManager getStorageManager() {
         warnIfExternalLegacyAccess("SodaEconomy#getStorageManager()", warnedStorageManagerAccess);
         return storageManager;
     }
 
     /** Not part of the supported API. Use {@link #getEconomyTransactionApi()} instead. */
-    @Deprecated(since = "1.1", forRemoval = true)
+    @Deprecated(since = "1.0", forRemoval = true)
     public ConfigManager getConfigManager() {
         warnIfExternalLegacyAccess("SodaEconomy#getConfigManager()", warnedConfigManagerAccess);
         return configManager;
@@ -308,7 +308,7 @@ public class SodaEconomy extends JavaPlugin {
      * Not part of the supported API. Use {@link #getEconomyTransactionApi()} for wallet movement
      * and the built-in /bank commands until a dedicated bank API is introduced.
      */
-    @Deprecated(since = "1.1", forRemoval = true)
+    @Deprecated(since = "1.0", forRemoval = true)
     public BankManager getBankManager() {
         warnIfExternalLegacyAccess("SodaEconomy#getBankManager()", warnedBankManagerAccess);
         return bankManager;
@@ -321,7 +321,7 @@ public class SodaEconomy extends JavaPlugin {
      * Legacy concrete service access. Use {@link #getEconomyTransactionApi()} for supported
      * integrations; this concrete type exposes internal command operations.
      */
-    @Deprecated(since = "1.1", forRemoval = true)
+    @Deprecated(since = "1.0", forRemoval = true)
     public TransactionService getTransactionService() {
         warnIfExternalLegacyAccess("SodaEconomy#getTransactionService()", warnedTransactionServiceAccess);
         return transactionService;

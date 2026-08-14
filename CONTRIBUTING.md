@@ -16,7 +16,7 @@ shortcuts or feature speed.
 
 - Java 17 bytecode target
 - Paper API 1.20.2 as the current compile baseline
-- Maven Wrapper or Gradle Wrapper from the repository
+- Gradle Wrapper from the repository for canonical release verification; Maven Wrapper for parity verification
 - MySQL 8.x for the optional integration test suite
 
 SodaEconomy currently targets modern Paper/Purpur servers. See `docs/compatibility.md` before
@@ -24,24 +24,30 @@ changing the API baseline or Java release target.
 
 ## Build and test
 
+Gradle is the canonical release build. A pull request must pass the Gradle verification path:
+
 Windows PowerShell:
 
 ```powershell
-.\mvnw.cmd verify
+.\gradlew.bat clean test
+.\gradlew.bat mysqlIntegrationTest jacocoTestReport jacocoTestCoverageVerification shadowJar
 ```
 
 Linux/macOS:
 
 ```bash
-./mvnw verify
+./gradlew clean test
+./gradlew mysqlIntegrationTest jacocoTestReport jacocoTestCoverageVerification shadowJar
 ```
 
-The standard verification must pass before a pull request is ready for review. Gradle verification
-is also maintained by CI:
+Maven remains supported as a secondary parity build and must also remain green:
 
 ```bash
-./gradlew clean test mysqlIntegrationTest jacocoTestReport jacocoTestCoverageVerification shadowJar
+./mvnw -B -ntp clean verify
 ```
+
+CI verifies both build definitions. Only the Gradle `shadowJar` output is the canonical release
+artifact. See `docs/build-contracts.md`.
 
 ### MySQL integration tests
 
@@ -55,8 +61,10 @@ $env:SODAECONOMY_TEST_MYSQL_DATABASE = "sodaeconomy_test"
 $env:SODAECONOMY_TEST_MYSQL_USER = "soda"
 $env:SODAECONOMY_TEST_MYSQL_PASSWORD = "replace-with-local-test-password"
 
-.\mvnw.cmd verify
+.\gradlew.bat mysqlIntegrationTest
 ```
+
+Run `./mvnw -B -ntp clean verify` separately for Maven build parity.
 
 More details are available in `src/test/README.md`.
 

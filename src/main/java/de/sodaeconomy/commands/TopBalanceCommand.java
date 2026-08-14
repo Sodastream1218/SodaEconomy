@@ -103,7 +103,7 @@ public class TopBalanceCommand implements CommandExecutor {
     private void sendLeaderboard(CommandSender sender, LeaderboardView view, Throwable throwable) {
         if (!plugin.isEnabled()) return;
         if (throwable != null || view == null) {
-            sendMessage(sender, "transaction-failed");
+            sendMessage(sender, "economy-read-unavailable");
             return;
         }
         if (view.balances().isEmpty()) {

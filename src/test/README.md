@@ -10,8 +10,9 @@ plugin for Java 17, which preserves compatibility with the current Paper 1.20.x 
 .\gradlew.bat shadowJar             # Production-ready JAR with bundled SQLite JDBC and an externally loaded MariaDB JDBC driver
 ```
 
-On Linux and macOS, replace `gradlew.bat` with `./gradlew`. The legacy Maven build remains
-available for existing local workflows, but GitHub Actions uses Gradle exclusively.
+On Linux and macOS, replace `gradlew.bat` with `./gradlew`. Gradle is the canonical release/test
+build. Maven remains a supported secondary parity build and GitHub Actions verifies
+`./mvnw -B -ntp clean verify` separately.
 
 ## Test types and layout
 
@@ -77,10 +78,13 @@ credentials above — never a shared, staging, or production database.
 
 ## CI pipeline
 
-`.github/workflows/test.yml` runs the same suite once against MySQL 8.4 and once against MariaDB 11.8 LTS. It waits for
-the server, configures UTF-8 (`utf8mb4`) and UTC, then runs `test` followed by
-`mysqlIntegrationTest`. Credentials are confined to workflow and test-process environment
-variables. Docker service containers are discarded with the job, so no data is shared between runs.
+`.github/workflows/test.yml` uses Gradle as the authoritative release path and runs the shared JDBC
+suite once against MySQL 8.4 and once against MariaDB 11.8 LTS. It waits for the server, configures
+UTF-8 (`utf8mb4`) and UTC, then runs `test` followed by `mysqlIntegrationTest`, JaCoCo verification,
+and `shadowJar`. A separate Maven parity job runs `./mvnw -B -ntp clean verify` so dependency scopes,
+Java compilation, tests, and packaging cannot silently drift between the two build definitions.
+Credentials are confined to workflow and test-process environment variables. Docker service
+containers are discarded with the job, so no data is shared between runs.
 
 The shared JDBC suite covers schema-version migration and idempotence, CRUD including direct read-back,
 duplicate keys, null and malformed data, transaction rollback, concurrent transfers, connection

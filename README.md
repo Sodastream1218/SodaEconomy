@@ -55,7 +55,7 @@ if (registration == null) {
 }
 
 EconomyTransactionApi economy = registration.getProvider();
-economy.transfer(sourceId, targetId, 25.00D, TransactionOrigin.api("ExamplePlugin"),
+economy.transfer(sourceId, targetId, new BigDecimal("25.00"), TransactionOrigin.api("ExamplePlugin"),
         TransactionRequestOptions.idempotent("Quest reward payment", Map.of("quest", "starter"),
                 "starter-quest:" + sourceId))
         .thenAccept(result -> {
@@ -69,12 +69,21 @@ The API is asynchronous. Do not access Bukkit player objects from completion cal
 scheduling back to the Paper main thread. `TransactionResult` contains the immutable record on a
 committed or persistable failed operation and a machine-readable `TransactionFailureReason`.
 
+The original `double` mutation methods remain supported for compatibility. New integrations that need
+exact decimal semantics should prefer the `BigDecimal` overloads or the `depositMinor`,
+`withdrawMinor`, `transferMinor`, and `setBalanceMinor` methods. Minor-unit methods use SodaEconomy's
+canonical two-decimal representation directly and avoid binary floating-point round-trips.
+
 `getStoredBalance(UUID)` reads a wallet balance asynchronously without creating an account or
-awarding a starting balance; it returns `0.0` when no account is stored. Exact read-only snapshot
-methods expose wallet and bank balances in canonical minor units for high-frequency presentation
-integrations without floating-point conversion. Use an idempotency key for
+awarding a starting balance; it returns `0.0` when no account is stored. Persistent read failures
+complete exceptionally and are never converted into fake zero values or empty snapshots. Exact
+read-only snapshot methods expose wallet and bank balances in canonical minor units for
+high-frequency presentation integrations without floating-point conversion. Use an idempotency key for
 operations that may be retried by the calling plugin. The key must identify one logical operation
 and must not be reused for unrelated payments.
+
+Persistent read/error semantics for commands, integrations and cached presentation data are documented
+in [`docs/read-failure-semantics.md`](docs/read-failure-semantics.md).
 
 ## Player identity API and optional Floodgate support
 
@@ -105,6 +114,12 @@ local cache prediction. It is intentionally the only integration surface that pr
 immutable history, rollback eligibility, statistics, and transaction events together. Low-level
 storage mutations are runtime-guarded and may throw `UnauthorizedStorageAccessException` when used
 from outside SodaEconomy's internal storage/transaction packages.
+
+For new integrations, exact monetary mutations are available through `depositMinor`, `withdrawMinor`,
+`transferMinor`, and `setBalanceMinor`, plus `BigDecimal` convenience overloads. The historical
+`double` methods remain supported for compatibility. SodaEconomy's built-in exact methods stay in
+`long` minor units throughout the transaction path, including values that cannot be represented
+exactly by binary floating point.
 
 ## Asynchronous persistence
 
@@ -191,13 +206,23 @@ Player statistics read existing data without creating a new wallet account.
 
 ## Development verification
 
+Gradle is the **canonical release build**. Use it for release-equivalent verification and artifact
+creation:
+
 ```text
-./mvnw verify
+./gradlew --no-daemon clean test
+./gradlew --no-daemon mysqlIntegrationTest jacocoTestReport jacocoTestCoverageVerification shadowJar
+```
+
+Maven remains supported as a secondary parity build and is also verified by CI:
+
+```text
+./mvnw -B -ntp clean verify
 ```
 
 The test suite includes unit tests for the transaction service and shared wallet-ledger storage
-contracts for YAML and SQLite. MySQL equivalents run when the CI MySQL test environment is
-configured.
+contracts for YAML and SQLite. The Gradle CI matrix runs the shared JDBC integration suite against
+MySQL 8.4 and MariaDB 11.8. See `docs/build-contracts.md` for the canonical-build contract.
 
 ## Shared MySQL maintenance gate
 
@@ -217,7 +242,7 @@ risking a split-brain migration.
 
 The optional JDBC integration suite runs with MariaDB Connector/J against both MySQL and MariaDB and includes explicit two-instance network-concurrency tests. They verify that independent plugin storage instances sharing one database cannot overspend the same wallet and that one idempotency key produces exactly one durable transaction and one balance mutation even when submitted concurrently from different instances.
 
-Run these tests against an isolated MySQL or MariaDB database by setting `SODAECONOMY_TEST_MYSQL=true` and the credentials documented in `src/test/README.md`, then execute `./mvnw verify`.
+Run these tests against an isolated MySQL or MariaDB database by setting `SODAECONOMY_TEST_MYSQL=true` and the credentials documented in `src/test/README.md`, then execute the canonical `./gradlew mysqlIntegrationTest` task. Maven may be run separately as a parity build.
 
 ## Safe config reload
 
@@ -235,6 +260,9 @@ into the SodaEconomy JAR. No separate expansion download or configuration is req
 Core placeholders include wallet, bank and combined balances, formatted/compact balance variants,
 the live currency symbol, and cached leaderboard position. Placeholder callbacks never perform
 synchronous SQL or disk I/O; persistent snapshots are refreshed asynchronously in the background.
+If a refresh fails, the last successful snapshot remains active. Before any successful player-data
+snapshot has loaded, affected placeholders return `-` instead of presenting backend failure as a
+real zero balance.
 
 Currency formatting and ranking limits use SodaEconomy's current runtime configuration, so a
 successful `/eco reload` is reflected automatically without `/papi reload`. See

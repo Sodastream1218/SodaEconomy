@@ -2,6 +2,7 @@ package de.sodaeconomy.transaction;
 
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -68,6 +69,63 @@ class EconomyTransactionApiTest {
     }
 
     @Test
+    void exactMinorCompatibilityDefaultBridgesOnlyLosslessly() {
+        RecordingApi api = new RecordingApi();
+        UUID targetPlayerId = UUID.randomUUID();
+
+        api.depositMinor(targetPlayerId, 2_501L, API_ORIGIN,
+                TransactionRequestOptions.of("Exact compatibility credit", Map.of())).join();
+
+        assertEquals(25.01D, api.amount);
+        assertEquals(TransactionType.API_DEPOSIT, api.type);
+    }
+
+    @Test
+    void exactMinorCompatibilityDefaultsCoverWithdrawTransferAndSet() {
+        RecordingApi api = new RecordingApi();
+        UUID sourcePlayerId = UUID.randomUUID();
+        UUID targetPlayerId = UUID.randomUUID();
+        TransactionRequestOptions options = TransactionRequestOptions.of("Exact compatibility", Map.of());
+
+        api.withdrawMinor(sourcePlayerId, 1_234L, API_ORIGIN, options).join();
+        assertEquals(12.34D, api.amount);
+        assertEquals(TransactionType.API_WITHDRAW, api.type);
+
+        api.transferMinor(sourcePlayerId, targetPlayerId, 5_678L, API_ORIGIN, options).join();
+        assertEquals(56.78D, api.amount);
+        assertEquals(TransactionType.API_TRANSFER, api.type);
+        assertEquals(sourcePlayerId, api.sourcePlayerId);
+        assertEquals(targetPlayerId, api.targetPlayerId);
+
+        api.setBalanceMinor(targetPlayerId, 9_999L, API_ORIGIN, options).join();
+        assertEquals(99.99D, api.amount);
+        assertEquals(TransactionType.API_SET, api.type);
+    }
+
+    @Test
+    void exactMinorCompatibilityDefaultRejectsLossyLargeValues() {
+        RecordingApi api = new RecordingApi();
+
+        CompletionException exception = assertThrows(CompletionException.class,
+                () -> api.depositMinor(UUID.randomUUID(), 9_007_199_254_740_993L, API_ORIGIN,
+                        TransactionRequestOptions.of("Too precise for legacy double", Map.of())).join());
+
+        assertInstanceOf(UnsupportedOperationException.class, exception.getCause());
+        assertNull(api.type);
+    }
+
+    @Test
+    void bigDecimalCompatibilityOverloadUsesCanonicalMinorUnits() {
+        RecordingApi api = new RecordingApi();
+
+        api.deposit(UUID.randomUUID(), new BigDecimal("12.345"), API_ORIGIN,
+                TransactionRequestOptions.of("Rounded decimal credit", Map.of())).join();
+
+        assertEquals(12.35D, api.amount);
+        assertEquals(TransactionType.API_DEPOSIT, api.type);
+    }
+
+    @Test
     void transactionRequestOptionsDefensivelyCopyMetadataAndNormalizeIdempotencyKeys() {
         Map<String, String> mutableMetadata = new java.util.LinkedHashMap<>();
         mutableMetadata.put("source", "quest");
@@ -93,11 +151,13 @@ class EconomyTransactionApiTest {
         private UUID targetPlayerId;
         private String reason;
         private Map<String, String> metadata;
+        private double amount;
 
         @Override
         public CompletableFuture<TransactionResult> deposit(UUID targetPlayerId, double amount, TransactionType type,
                                                              TransactionOrigin origin, String reason,
                                                              Map<String, String> metadata) {
+            this.amount = amount;
             capture(type, origin, null, targetPlayerId, reason, metadata);
             return completedResult();
         }
@@ -106,6 +166,7 @@ class EconomyTransactionApiTest {
         public CompletableFuture<TransactionResult> withdraw(UUID sourcePlayerId, double amount, TransactionType type,
                                                               TransactionOrigin origin, String reason,
                                                               Map<String, String> metadata) {
+            this.amount = amount;
             capture(type, origin, sourcePlayerId, null, reason, metadata);
             return completedResult();
         }
@@ -114,6 +175,7 @@ class EconomyTransactionApiTest {
         public CompletableFuture<TransactionResult> transfer(UUID sourcePlayerId, UUID targetPlayerId, double amount,
                                                               TransactionType type, TransactionOrigin origin, String reason,
                                                               Map<String, String> metadata) {
+            this.amount = amount;
             capture(type, origin, sourcePlayerId, targetPlayerId, reason, metadata);
             return completedResult();
         }
@@ -122,6 +184,7 @@ class EconomyTransactionApiTest {
         public CompletableFuture<TransactionResult> setBalance(UUID targetPlayerId, double targetBalance,
                                                                 TransactionType type, TransactionOrigin origin,
                                                                 String reason, Map<String, String> metadata) {
+            this.amount = targetBalance;
             capture(type, origin, null, targetPlayerId, reason, metadata);
             return completedResult();
         }

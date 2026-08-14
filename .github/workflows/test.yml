@@ -111,6 +111,40 @@ jobs:
             exit 1
           fi
 
+  maven-parity:
+    name: Maven build parity
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 and Maven cache
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Make Maven Wrapper executable
+        run: chmod +x mvnw
+
+      - name: Run Maven parity verification
+        run: ./mvnw -B -ntp clean verify
+
+      - name: Verify Maven shaded JAR contains no bundled external runtime APIs/drivers
+        run: |
+          set -euo pipefail
+          jar_file="$(find target -maxdepth 1 -type f -name 'SodaEconomy-*.jar' ! -name 'original-*' | head -n 1)"
+          test -n "$jar_file"
+          jar tf "$jar_file" > target/maven-release-jar-contents.txt
+          if grep -Eq '^(com/mysql/|de/sodaeconomy/libs/mysql/|org/mariadb/jdbc/|com/google/protobuf/|me/clip/placeholderapi/|net/milkbowl/vault/)' target/maven-release-jar-contents.txt; then
+            echo "Maven shaded JAR unexpectedly contains an external JDBC driver, protobuf classes, Vault API classes, or PlaceholderAPI classes." >&2
+            grep -E '^(com/mysql/|de/sodaeconomy/libs/mysql/|org/mariadb/jdbc/|com/google/protobuf/|me/clip/placeholderapi/|net/milkbowl/vault/)' target/maven-release-jar-contents.txt >&2
+            exit 1
+          fi
+
   recovery-stress:
     name: Local recovery WAL stress
     if: github.event_name == 'workflow_dispatch'

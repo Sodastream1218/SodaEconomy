@@ -39,7 +39,7 @@ public class BalanceCommand implements CommandExecutor {
                         return;
                     }
                     if (throwable != null || balance == null) {
-                        player.sendMessage(plugin.getLanguageManager().getFormattedMessage("transaction-failed"));
+                        player.sendMessage(plugin.getLanguageManager().getFormattedMessage("economy-read-unavailable"));
                         return;
                     }
                     player.sendMessage(plugin.getLanguageManager().getFormattedMessage(

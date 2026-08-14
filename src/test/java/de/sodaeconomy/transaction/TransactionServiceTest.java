@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -18,6 +19,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -51,6 +54,31 @@ class TransactionServiceTest {
         if (MockBukkit.isMocked()) {
             MockBukkit.unmock();
         }
+    }
+
+    @Test
+    void readFailuresCompleteExceptionallyInsteadOfMasqueradingAsZeroOrEmptyData() throws Exception {
+        UUID playerId = UUID.randomUUID();
+        UUID missingPlayerId = UUID.randomUUID();
+        storage.setBalance(playerId, 42D);
+        storage.setBankBalance(playerId, 7D);
+
+        assertEquals(0D, transactions.getStoredBalance(missingPlayerId).get(5L, TimeUnit.SECONDS),
+                "A genuinely missing persisted wallet remains a valid zero-value read.");
+        assertTrue(transactions.getStoredBalancesMinorUnits().get(5L, TimeUnit.SECONDS).containsKey(playerId));
+
+        storage.setFailReads(true);
+
+        assertReadFailure(transactions.getBalanceAsynchronously(playerId));
+        assertReadFailure(transactions.getBankBalanceAsynchronously(playerId));
+        assertReadFailure(transactions.getStoredBalance(playerId));
+        assertReadFailure(transactions.getAllBalancesAsynchronously());
+        assertReadFailure(transactions.getStoredBalancesMinorUnits());
+        assertReadFailure(transactions.getStoredBankBalancesMinorUnits());
+        assertReadFailure(transactions.findTransactions(TransactionQuery.recent()));
+        assertReadFailure(transactions.getStatistics());
+        assertReadFailure(transactions.getAnalytics());
+        assertReadFailure(transactions.getPlayerStatistics(playerId));
     }
 
     @Test
@@ -282,6 +310,34 @@ class TransactionServiceTest {
     }
 
     @Test
+    void publicExactMutationApiPreservesMinorUnitsBeyondDoublePrecision() throws Exception {
+        UUID playerId = UUID.randomUUID();
+        long exactBalanceMinor = 9_007_199_254_740_993L;
+        TransactionRequestOptions options = TransactionRequestOptions.of("Exact API test", Map.of());
+        TransactionOrigin origin = TransactionOrigin.api("TransactionServiceTest");
+        ExactMutationCapturingStorage exactStorage = new ExactMutationCapturingStorage();
+
+        try (TransactionService exactService = new TransactionService(plugin, exactStorage, 0D, 0D, CLOCK)) {
+            TransactionResult setResult = exactService.setBalance(playerId,
+                    new BigDecimal("90071992547409.93"), origin, options).get(5L, TimeUnit.SECONDS);
+
+            assertTrue(setResult.isSuccessful());
+            assertNotNull(exactStorage.capturedRequest);
+            assertEquals(WalletOperation.SET, exactStorage.capturedRequest.operation());
+            assertEquals(exactBalanceMinor, exactStorage.capturedRequest.targetBalanceMinor());
+            assertEquals(exactBalanceMinor, exactStorage.capturedRequest.amountMinor());
+
+            TransactionResult depositResult = exactService.depositMinor(playerId, 7L, origin, options)
+                    .get(5L, TimeUnit.SECONDS);
+
+            assertTrue(depositResult.isSuccessful());
+            assertNotNull(exactStorage.capturedRequest);
+            assertEquals(WalletOperation.CREDIT, exactStorage.capturedRequest.operation());
+            assertEquals(7L, exactStorage.capturedRequest.amountMinor());
+        }
+    }
+
+    @Test
     void keepsRollbackAmountsInExactMinorUnits() {
         long exactAmountMinor = 9_007_199_254_740_993L;
         UUID sourceId = UUID.randomUUID();
@@ -311,6 +367,13 @@ class TransactionServiceTest {
         assertEquals(TransactionFailureReason.SERVICE_STOPPING, result.failureReason());
     }
 
+    private static void assertReadFailure(CompletableFuture<?> future) {
+        ExecutionException failure = assertThrows(ExecutionException.class,
+                () -> future.get(5L, TimeUnit.SECONDS));
+        assertTrue(failure.getCause() instanceof StorageReadException,
+                "Persistent read errors must complete exceptionally with the internal read-failure signal.");
+    }
+
     private void setBalance(UUID playerId, double amount) {
         TransactionResult result = transactions.setBalanceSynchronously(playerId, amount, TransactionType.API_SET,
                 CONSOLE, "Test setup", Map.of());
@@ -319,6 +382,55 @@ class TransactionServiceTest {
 
     private static TransactionQuery playerHistory(UUID playerId, int limit) {
         return new TransactionQuery(null, playerId, null, null, null, null, null, null, 0, limit);
+    }
+
+    /** Captures exact API mutation requests without storing canonical minor units as doubles. */
+    private static final class ExactMutationCapturingStorage implements Storage, WalletTransactionStore {
+        private WalletTransactionRequest capturedRequest;
+
+        @Override public void init(JavaPlugin plugin) { }
+        @Override public Double getBalance(UUID uuid) { return null; }
+        @Override public double getOrCreateBalance(UUID uuid, double initialBalance) { return initialBalance; }
+        @Override public void setBalance(UUID uuid, double amount) { }
+        @Override public Map<UUID, Double> getAllBalances() { return Map.of(); }
+        @Override public void saveAll(Map<UUID, Double> balances) { }
+        @Override public Double getBankBalance(UUID uuid) { return null; }
+        @Override public void setBankBalance(UUID uuid, double amount) { }
+        @Override public Map<UUID, Double> getAllBankBalances() { return Map.of(); }
+        @Override public void saveAllBank(Map<UUID, Double> bankBalances) { }
+        @Override public boolean transferMain(UUID source, UUID target, double amount) { return false; }
+        @Override public boolean transferMainAndBank(UUID uuid, boolean mainToBank, double amount) { return false; }
+        @Override public void close() { }
+        @Override public boolean isDebug() { return false; }
+
+        @Override
+        public WalletAccountState ensureWalletAccount(UUID playerId, long startingBalanceMinor, Instant timestamp) {
+            return new WalletAccountState(0L, false);
+        }
+
+        @Override
+        public TransactionRecord executeWalletTransaction(WalletTransactionRequest request, long maximumBalanceMinor) {
+            capturedRequest = request;
+            long after = request.operation() == WalletOperation.SET
+                    ? request.targetBalanceMinor()
+                    : request.amountMinor();
+            return TransactionRecords.successful(request, request.amountMinor(), null, null, 0L, after);
+        }
+
+        @Override
+        public TransactionRecord executeWalletBankTransaction(WalletTransactionRequest request, boolean mainToBank,
+                                                               long maximumBalanceMinor) {
+            throw new AssertionError("Exact API test does not use wallet-bank movements");
+        }
+
+        @Override public Optional<TransactionRecord> findTransaction(UUID transactionId) { return Optional.empty(); }
+        @Override public TransactionPage findTransactions(TransactionQuery query) {
+            return new TransactionPage(List.of(), query.offset(), query.limit(), false);
+        }
+        @Override public EconomyStatistics getEconomyStatistics() {
+            return new EconomyStatistics(0L, 0L, null, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
+        }
+        @Override public List<TransactionRecord> getAllWalletTransactions() { return List.of(); }
     }
 
     /** Captures the exact rollback request without converting persisted minor units through doubles. */

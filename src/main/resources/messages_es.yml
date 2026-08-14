@@ -21,6 +21,7 @@ unknown-subcommand: "§cSubcomando desconocido. Escribe /eco para obtener ayuda.
 leaderboard-disabled: "§cLa clasificación está desactivada en este servidor."
 banking-disabled: "§cEl sistema bancario está desactivado en este servidor."
 
+economy-read-unavailable: "§cLos datos de la economía no están disponibles temporalmente. Inténtalo de nuevo más tarde."
 transaction-failed: "§cNo se pudo completar la transacción. Vuelve a intentarlo más tarde."
 
 # --- Comando /balance ---

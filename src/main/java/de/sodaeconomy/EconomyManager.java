@@ -46,7 +46,7 @@ public class EconomyManager {
     public double getBalance(UUID uuid) { return transactionService.getBalanceSynchronously(uuid); }
 
     /** Legacy compatibility facade; new integrations should use {@link de.sodaeconomy.transaction.EconomyTransactionApi}. */
-    @Deprecated(since = "1.1", forRemoval = true)
+    @Deprecated(since = "1.0", forRemoval = true)
     public void setBalance(UUID uuid, double amount) {
         if (!Money.isValid(amount) || amount < 0D || uuid == null) return;
         double boundedAmount = maxBalance > 0D ? Math.min(amount, maxBalance) : amount;
@@ -55,7 +55,7 @@ public class EconomyManager {
     }
 
     /** Legacy compatibility facade; new integrations should use {@link de.sodaeconomy.transaction.EconomyTransactionApi}. */
-    @Deprecated(since = "1.1", forRemoval = true)
+    @Deprecated(since = "1.0", forRemoval = true)
     public void addBalance(UUID uuid, double amount) {
         if (!Money.isPositive(amount) || uuid == null) return;
         transactionService.depositSynchronously(uuid, amount, TransactionType.API_DEPOSIT,
@@ -63,7 +63,7 @@ public class EconomyManager {
     }
 
     /** Legacy compatibility facade; new integrations should use {@link de.sodaeconomy.transaction.EconomyTransactionApi}. */
-    @Deprecated(since = "1.1", forRemoval = true)
+    @Deprecated(since = "1.0", forRemoval = true)
     public boolean removeBalance(UUID uuid, double amount) {
         if (!Money.isPositive(amount) || uuid == null) return false;
         return transactionService.withdrawSynchronously(uuid, amount, TransactionType.API_WITHDRAW,
@@ -72,7 +72,7 @@ public class EconomyManager {
 
     /** Pays either the complete amount or nothing. The maximum balance is checked under the same lock. */
     /** Legacy compatibility facade; new integrations should use {@link de.sodaeconomy.transaction.EconomyTransactionApi}. */
-    @Deprecated(since = "1.1", forRemoval = true)
+    @Deprecated(since = "1.0", forRemoval = true)
     public boolean transfer(UUID source, UUID target, double amount) {
         if (source == null || target == null || source.equals(target) || !Money.isPositive(amount)) return false;
         return transactionService.transferSynchronously(source, target, amount, TransactionType.API_TRANSFER,
@@ -81,7 +81,7 @@ public class EconomyManager {
 
     /** Atomically moves money between a player's main and bank account. */
     /** Legacy compatibility facade; new integrations should use {@link de.sodaeconomy.transaction.EconomyTransactionApi}. */
-    @Deprecated(since = "1.1", forRemoval = true)
+    @Deprecated(since = "1.0", forRemoval = true)
     public boolean transferMainAndBank(UUID uuid, boolean mainToBank, double amount) {
         if (uuid == null || !Money.isPositive(amount)) return false;
         return locked(() -> transactionService.transferWalletAndBankSynchronously(uuid, mainToBank, amount,
@@ -90,7 +90,16 @@ public class EconomyManager {
     }
 
     public void resetBalance(UUID uuid) { setBalance(uuid, startingBalance); }
-    public Map<UUID, Double> getAllBalances() { return locked(storage::getAllBalances, Map.of()); }
+    public Map<UUID, Double> getAllBalances() {
+        transactionLock.lock();
+        try {
+            return Map.copyOf(storage.getAllBalances());
+        } catch (Exception exception) {
+            throw new IllegalStateException("Could not read economy balances", exception);
+        } finally {
+            transactionLock.unlock();
+        }
+    }
     public String getPlayerName(UUID uuid) {
         if (uuid == null) return "Unknown";
         return playerIdentityApi == null
@@ -113,7 +122,7 @@ public class EconomyManager {
     TransactionService transactionService() { return transactionService; }
 
     /** Internal command-service access retained temporarily for source compatibility. */
-    @Deprecated(since = "1.1", forRemoval = true)
+    @Deprecated(since = "1.0", forRemoval = true)
     public TransactionService getTransactionService() { return transactionService; }
 
     public <T> T locked(ThrowingSupplier<T> action, T fallback) {

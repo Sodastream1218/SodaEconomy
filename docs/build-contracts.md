@@ -3,6 +3,21 @@
 This document records release-critical build contracts that must not drift while
 SodaEconomy remains a single optional-integration plugin artifact.
 
+## Canonical build and Maven parity
+
+**Gradle is the canonical SodaEconomy release build.** The official release artifact is produced by
+`shadowJar`, and the MySQL 8.4 / MariaDB 11.8 integration matrix, JaCoCo gate, and release-JAR
+content checks are authoritative in the Gradle CI path.
+
+Maven remains a supported secondary build for contributors and IDE/tooling compatibility. CI runs
+`./mvnw -B -ntp clean verify` as a separate parity job and inspects the Maven shaded JAR for the
+same forbidden server-provided APIs/drivers. Maven is not a second source of truth for published
+release artifacts.
+
+Any dependency, Java target, test-scope, shading, or optional-integration change must keep both
+build definitions green. A change that passes Gradle but fails Maven (or vice versa) is a failed
+build-contract change, not an acceptable release state.
+
 ## Vault
 
 Vault support is an optional integration adapter. SodaEconomy must not require

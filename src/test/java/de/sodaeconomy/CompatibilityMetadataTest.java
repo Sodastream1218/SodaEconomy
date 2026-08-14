@@ -178,6 +178,79 @@ class CompatibilityMetadataTest {
     }
 
     @Test
+    void gradleIsCanonicalAndMavenParityIsVerifiedInCi() throws IOException {
+        String workflow = Files.readString(PROJECT_ROOT.resolve(".github/workflows/test.yml"));
+        String readme = Files.readString(PROJECT_ROOT.resolve("README.md"));
+        String contracts = Files.readString(PROJECT_ROOT.resolve("docs/build-contracts.md"));
+
+        assertTrue(readme.contains("Gradle is the **canonical release build**"));
+        assertTrue(contracts.contains("**Gradle is the canonical SodaEconomy release build.**"));
+        assertTrue(workflow.contains("name: Maven build parity"));
+        assertTrue(workflow.contains("./mvnw -B -ntp clean verify"));
+        assertTrue(workflow.contains("./gradlew --no-daemon mysqlIntegrationTest"));
+    }
+
+    @Test
+    void mavenAndGradleReleaseCriticalDependencyVersionsStayAligned() throws IOException {
+        String pom = Files.readString(PROJECT_ROOT.resolve("pom.xml"));
+        String gradle = readOptionalBuildFile("build.gradle.kts");
+
+        assertTrue(pom.contains("<version>1.0.0</version>") && gradle.contains("version = \"1.0.0\""));
+        assertTrue(pom.contains("<version>1.20.2-R0.1-SNAPSHOT</version>")
+                && gradle.contains("paper-api:1.20.2-R0.1-SNAPSHOT"));
+        assertTrue(pom.contains("<placeholderapi.version>2.12.3</placeholderapi.version>")
+                && gradle.contains("placeholderapi:2.12.3"));
+        assertTrue(pom.contains("<vaultapi.version>1.7</vaultapi.version>")
+                && gradle.contains("VaultAPI:1.7"));
+        assertTrue(pom.contains("<version>3.46.1.3</version>")
+                && gradle.contains("sqlite-jdbc:3.46.1.3"));
+        assertTrue(pom.contains("<mariadb.connector.version>3.5.9</mariadb.connector.version>")
+                && gradle.contains("mariadb-java-client:3.5.9"));
+        assertTrue(pom.contains("<junit.version>5.10.1</junit.version>")
+                && gradle.contains("junit-bom:5.10.1"));
+        assertTrue(pom.contains("<mockbukkit.version>3.58.1</mockbukkit.version>")
+                && gradle.contains("MockBukkit-v1.20:3.58.1"));
+    }
+
+    @Test
+    void publicMetadataAndDefaultDatabaseAccountAreReleaseSafe() throws IOException {
+        String pluginYml = Files.readString(PROJECT_ROOT.resolve("src/main/resources/plugin.yml"));
+        String config = Files.readString(PROJECT_ROOT.resolve("src/main/resources/config.yml"));
+        String pom = Files.readString(PROJECT_ROOT.resolve("pom.xml"));
+
+        assertTrue(pluginYml.contains("description: Production-focused economy system"));
+        assertTrue(!pluginYml.contains("Zeigt dein") && !pluginYml.contains("Erlaubt die Nutzung"));
+        assertTrue(config.contains("user: sodaeconomy"));
+        assertTrue(!config.contains("user: root"));
+        String mysqlStorage = Files.readString(PROJECT_ROOT.resolve(
+                "src/main/java/de/sodaeconomy/storage/MySQLStorage.java"));
+        assertTrue(mysqlStorage.contains("getString(\"storage.mysql.user\", \"sodaeconomy\")"));
+        assertTrue(pom.contains("<description>A production-focused economy system for Minecraft Paper</description>"));
+    }
+
+    @Test
+    void preReleaseDeprecationMetadataAndExactMoneyApiAreFrozenForVersionOne() throws IOException {
+        String economyManager = Files.readString(PROJECT_ROOT.resolve(
+                "src/main/java/de/sodaeconomy/EconomyManager.java"));
+        String pluginMain = Files.readString(PROJECT_ROOT.resolve(
+                "src/main/java/de/sodaeconomy/SodaEconomy.java"));
+        String storage = Files.readString(PROJECT_ROOT.resolve(
+                "src/main/java/de/sodaeconomy/storage/Storage.java"));
+        String storageManager = Files.readString(PROJECT_ROOT.resolve(
+                "src/main/java/de/sodaeconomy/storage/StorageManager.java"));
+        String api = Files.readString(PROJECT_ROOT.resolve(
+                "src/main/java/de/sodaeconomy/transaction/EconomyTransactionApi.java"));
+
+        assertTrue(!economyManager.contains("since = \"1.1\"")
+                && !pluginMain.contains("since = \"1.1\"")
+                && !storage.contains("since = \"1.1\"")
+                && !storageManager.contains("since = \"1.1\""));
+        assertTrue(economyManager.contains("@Deprecated(since = \"1.0\", forRemoval = true)"));
+        assertTrue(api.contains("depositMinor(UUID targetPlayerId, long amountMinor"));
+        assertTrue(api.contains("BigDecimal amount"));
+    }
+
+    @Test
     void compatibilityDocumentationExists() {
         Path documentation = PROJECT_ROOT.resolve("docs/compatibility.md");
         assertTrue(Files.isRegularFile(documentation),

@@ -39,6 +39,27 @@ Documented legacy parameters are translated as follows:
 An explicit native `sslMode` takes precedence. Unsupported options are logged and ignored rather
 than silently accepted by the driver.
 
+## Database account and privileges
+
+Use a dedicated database account for SodaEconomy. Do **not** use a MySQL/MariaDB `root` or other
+server-wide administrative account in `config.yml`.
+
+For the current schema and automatic migrations, the dedicated account needs normal DML access plus
+schema-local DDL privileges on the SodaEconomy database: `SELECT`, `INSERT`, `UPDATE`, `DELETE`,
+`CREATE`, `ALTER`, and `INDEX`. It does not need global administrator privileges.
+
+Example for a database hosted on the same machine:
+
+```sql
+CREATE USER 'sodaeconomy'@'localhost' IDENTIFIED BY 'replace-with-a-strong-password';
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX
+ON `sodaeconomy`.* TO 'sodaeconomy'@'localhost';
+```
+
+Adapt the host part to the actual network topology instead of granting unnecessarily broad access.
+Future releases that require additional migration privileges must document that requirement before
+operators upgrade.
+
 ## Data and SQL compatibility
 
 No schema version was added. All existing DDL, migrations, `SELECT ... FOR UPDATE`, named locks,

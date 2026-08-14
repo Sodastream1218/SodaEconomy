@@ -80,7 +80,7 @@ public class BankCommand implements CommandExecutor {
         bankManager.getBankBalanceAsynchronously(playerId).whenComplete((bankBalance, throwable) ->
                 runOnMainThread(() -> {
                     if (throwable != null || bankBalance == null) {
-                        sendMessage(sender, "transaction-failed");
+                        sendMessage(sender, "economy-read-unavailable");
                         return;
                     }
                     sendMessage(sender, "bank-balance-display", "player", playerName,
@@ -155,7 +155,7 @@ public class BankCommand implements CommandExecutor {
     private void withKnownIdentity(CommandSender sender, String suppliedName, Consumer<PlayerIdentity> action) {
         playerIdentityApi.resolve(suppliedName).whenComplete((identity, throwable) -> {
             if (throwable != null) {
-                runOnMainThread(() -> sendMessage(sender, "transaction-failed"));
+                runOnMainThread(() -> sendMessage(sender, "economy-read-unavailable"));
                 return;
             }
             if (identity.isEmpty()) {

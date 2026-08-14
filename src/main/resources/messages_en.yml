@@ -21,6 +21,7 @@ unknown-subcommand: "§cUnknown subcommand. Type /eco for help."
 leaderboard-disabled: "§cThe leaderboard is disabled on this server."
 banking-disabled: "§cThe banking system is disabled on this server."
 
+economy-read-unavailable: "§cEconomy data is temporarily unavailable. Please try again later."
 transaction-failed: "§cThe transaction could not be completed. Please try again later."
 
 # --- /balance command ---

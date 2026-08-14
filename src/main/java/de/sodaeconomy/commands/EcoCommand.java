@@ -251,7 +251,7 @@ public final class EcoCommand implements CommandExecutor, TabCompleter {
         transactionService.getBalanceAsynchronously(target.getUniqueId())
                 .whenComplete((balance, throwable) -> runOnMainThread(() -> {
                     if (throwable != null || balance == null) {
-                        sendMessage(sender, "transaction-failed");
+                        sendMessage(sender, "economy-read-unavailable");
                         return;
                     }
                     sendMessage(sender, "eco-show-balance", "player", target.getName(),
@@ -265,17 +265,17 @@ public final class EcoCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (args.length == 2) {
-            withKnownIdentity(sender, args[1], target -> transactionService
+            withKnownIdentity(sender, args[1], target -> reportReadCompletion(sender, transactionService
                     .getStoredBalanceAsynchronously(target.playerId())
                     .thenCombine(transactionService.getPlayerStatistics(target.playerId()), PlayerStatisticsView::new)
                     .thenAccept(view -> runOnMainThread(() -> sendPlayerStatistics(sender,
-                            target.lastKnownName(), view.balance(), view.statistics()))));
+                            target.lastKnownName(), view.balance(), view.statistics())))));
             return;
         }
-        transactionService.getAnalytics().thenCompose(analytics -> playerIdentityApi
+        reportReadCompletion(sender, transactionService.getAnalytics().thenCompose(analytics -> playerIdentityApi
                 .resolveDisplayNames(analytics.statistics().richestPlayerId() == null
                         ? List.of() : List.of(analytics.statistics().richestPlayerId()))
-                .thenAccept(names -> runOnMainThread(() -> sendServerStatistics(sender, analytics, names))));
+                .thenAccept(names -> runOnMainThread(() -> sendServerStatistics(sender, analytics, names)))));
     }
 
     private void handleHistory(CommandSender sender, String[] args) {
@@ -318,10 +318,10 @@ public final class EcoCommand implements CommandExecutor, TabCompleter {
         }
         TransactionQuery query = new TransactionQuery(null, playerId, null, null, null, null, null, null,
                 offset, pageSize);
-        transactionService.findTransactions(query).thenCompose(result -> playerIdentityApi
+        reportReadCompletion(sender, transactionService.findTransactions(query).thenCompose(result -> playerIdentityApi
                 .resolveDisplayNames(participantIds(result.records()))
                 .thenAccept(names -> runOnMainThread(() -> sendHistory(sender, playerName, pageNumber,
-                        pageCommandPrefix, result, names))));
+                        pageCommandPrefix, result, names)))));
     }
 
     private void handleTransaction(CommandSender sender, String[] args) {
@@ -336,7 +336,7 @@ public final class EcoCommand implements CommandExecutor, TabCompleter {
         }
         TransactionQuery query = new TransactionQuery(transactionId.get(), null, null, null, null, null,
                 null, null, 0, 1);
-        transactionService.findTransactions(query).thenCompose(page -> {
+        reportReadCompletion(sender, transactionService.findTransactions(query).thenCompose(page -> {
             if (page.records().isEmpty()) {
                 return CompletableFuture.completedFuture(Map.<UUID, String>of()).thenAccept(ignored ->
                         runOnMainThread(() -> sendMessage(sender, "eco-transaction-not-found",
@@ -345,7 +345,7 @@ public final class EcoCommand implements CommandExecutor, TabCompleter {
             TransactionRecord record = page.records().get(0);
             return playerIdentityApi.resolveDisplayNames(participantIds(List.of(record)))
                     .thenAccept(names -> runOnMainThread(() -> sendTransactionDetails(sender, record, names)));
-        });
+        }));
     }
 
     private void handleRollback(CommandSender sender, String[] args) {
@@ -371,10 +371,10 @@ public final class EcoCommand implements CommandExecutor, TabCompleter {
             sendMessage(sender, "eco-audit-usage");
             return;
         }
-        withKnownIdentity(sender, args[1], target -> transactionService
+        withKnownIdentity(sender, args[1], target -> reportReadCompletion(sender, transactionService
                 .getPlayerStatistics(target.playerId())
                 .thenAccept(statistics -> runOnMainThread(() -> sendAudit(sender,
-                        target.lastKnownName(), statistics))));
+                        target.lastKnownName(), statistics)))));
     }
 
     private void sendHistory(CommandSender sender, String playerName, int pageNumber, String pageCommandPrefix,
@@ -564,6 +564,14 @@ public final class EcoCommand implements CommandExecutor, TabCompleter {
         }));
     }
 
+    private void reportReadCompletion(CommandSender sender, CompletableFuture<?> future) {
+        future.whenComplete((ignored, throwable) -> {
+            if (throwable != null) {
+                runOnMainThread(() -> sendMessage(sender, "economy-read-unavailable"));
+            }
+        });
+    }
+
     private boolean requirePermission(CommandSender sender, String permission) {
         if (hasPermission(sender, permission)) return true;
         sendMessage(sender, "no-permission");
@@ -744,7 +752,7 @@ public final class EcoCommand implements CommandExecutor, TabCompleter {
                                    java.util.function.Consumer<PlayerIdentity> action) {
         playerIdentityApi.resolve(suppliedName).whenComplete((identity, throwable) -> {
             if (throwable != null) {
-                runOnMainThread(() -> sendMessage(sender, "transaction-failed"));
+                runOnMainThread(() -> sendMessage(sender, "economy-read-unavailable"));
                 return;
             }
             if (identity.isEmpty()) {

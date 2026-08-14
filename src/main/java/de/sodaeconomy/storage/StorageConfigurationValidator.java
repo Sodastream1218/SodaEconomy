@@ -17,29 +17,29 @@ public final class StorageConfigurationValidator {
         List<String> problems = new ArrayList<>();
         requireText(configuration, "storage.mysql.host", "Host", problems);
         requirePort(configuration, problems);
-        requireText(configuration, "storage.mysql.database", "Datenbank", problems);
-        requireText(configuration, "storage.mysql.user", "Benutzername", problems);
-        requireText(configuration, "storage.mysql.password", "Passwort", problems);
+        requireText(configuration, "storage.mysql.database", "Database", problems);
+        requireText(configuration, "storage.mysql.user", "Username", problems);
+        requireText(configuration, "storage.mysql.password", "Password", problems);
         return problems.isEmpty() ? ValidationResult.successful() : ValidationResult.failed(problems);
     }
 
     private void requireText(FileConfiguration configuration, String path, String displayName, List<String> problems) {
         if (!configuration.contains(path, true) || !configuration.isString(path)) {
-            problems.add(displayName + " fehlt.");
+            problems.add(displayName + " is missing.");
             return;
         }
         String value = configuration.getString(path);
-        if (value == null || value.isBlank()) problems.add(displayName + " fehlt oder ist leer.");
+        if (value == null || value.isBlank()) problems.add(displayName + " is missing or empty.");
     }
 
     private void requirePort(FileConfiguration configuration, List<String> problems) {
         String path = "storage.mysql.port";
         if (!configuration.contains(path, true) || !configuration.isInt(path)) {
-            problems.add("Port fehlt oder ist keine ganze Zahl.");
+            problems.add("Port is missing or is not an integer.");
             return;
         }
         int port = configuration.getInt(path);
-        if (port < 1 || port > 65_535) problems.add("Port muss zwischen 1 und 65535 liegen.");
+        if (port < 1 || port > 65_535) problems.add("Port must be between 1 and 65535.");
     }
 
     public record ValidationResult(boolean valid, List<String> problems) {

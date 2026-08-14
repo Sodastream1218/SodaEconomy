@@ -62,7 +62,7 @@ public interface Storage {
      * Low-level legacy persistence operation. Use the central wallet transaction service so
      * balance changes and journal records commit together.
      */
-    @Deprecated(since = "1.1", forRemoval = true)
+    @Deprecated(since = "1.0", forRemoval = true)
     void setBalance(UUID uuid, double amount) throws Exception;
 
     /**
@@ -159,7 +159,7 @@ public interface Storage {
      * @param amount balance to persist
      * @throws Exception when persistence fails
      */
-    @Deprecated(since = "1.1", forRemoval = true)
+    @Deprecated(since = "1.0", forRemoval = true)
     void setBankBalance(UUID uuid, double amount) throws Exception;
 
     /**
@@ -300,14 +300,14 @@ public interface Storage {
      * Low-level legacy persistence operation. Use the central wallet transaction service so
      * transfers and journal records commit together.
      */
-    @Deprecated(since = "1.1", forRemoval = true)
+    @Deprecated(since = "1.0", forRemoval = true)
     boolean transferMain(UUID source, UUID target, double amount) throws Exception;
 
     /**
      * Low-level legacy persistence operation. Use the central wallet transaction service so
      * wallet-bank transfers and journal records commit together.
      */
-    @Deprecated(since = "1.1", forRemoval = true)
+    @Deprecated(since = "1.0", forRemoval = true)
     boolean transferMainAndBank(UUID uuid, boolean mainToBank, double amount) throws Exception;
 
 

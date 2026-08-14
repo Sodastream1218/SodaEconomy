@@ -9,6 +9,14 @@ The project follows Semantic Versioning for public releases and uses prerelease 
 
 ### Changed
 
+- Declared Gradle as the canonical release build while keeping Maven as a CI-verified parity build.
+- Added exact public money mutation APIs using canonical minor units and `BigDecimal` without removing the existing `double` compatibility methods.
+- Replaced the example MYSQL `root` account with a dedicated `sodaeconomy` account and documented least-privilege database permissions.
+- Standardized public plugin metadata and storage startup diagnostics on English.
+- Corrected pre-release legacy API deprecation metadata from `since = "1.1"` to `since = "1.0"`.
+- Hardened persistent read semantics so storage/backend failures complete read futures exceptionally instead of masquerading as legitimate zero balances, empty snapshots, empty histories or zeroed statistics.
+- PlaceholderAPI now retains the last successful wallet/bank snapshot independently during backend failures and exposes `-` before the first successful player-data snapshot instead of inventing zero economy data.
+- Read-only commands now report localized temporary economy-data unavailability rather than displaying false zero/empty results.
 - Redesigned YAML/SQLite crash recovery as a bounded, checksummed pending-mutation WAL instead of rewriting the complete lifetime wallet journal for every accepted local mutation.
 - Added idempotent startup reconciliation, legacy recovery-file migration, atomic compaction safeguards and direct-write protection against stale recovery residue.
 - Added recovery corruption, precision, crash-boundary, compaction and opt-in 10k/50k/100k filesystem stress tests.
