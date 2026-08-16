@@ -18,6 +18,10 @@ import de.sodaeconomy.transaction.TransactionRecord;
 import de.sodaeconomy.transaction.TransactionResult;
 import de.sodaeconomy.transaction.TransactionService;
 import de.sodaeconomy.transaction.TransactionType;
+import de.sodaeconomy.update.UpdateCheckResult;
+import de.sodaeconomy.update.UpdateCheckStatus;
+import de.sodaeconomy.update.UpdateCheckerService;
+import de.sodaeconomy.update.UpdateNotificationService;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -48,12 +52,17 @@ public final class EcoCommand implements CommandExecutor, TabCompleter {
     private static final String AUDIT_PERMISSION = "sodaeconomy.audit";
     private static final String STATISTICS_PERMISSION = "sodaeconomy.stats";
     private static final String RELOAD_PERMISSION = "sodaeconomy.admin.reload";
+    private static final String UPDATE_PERMISSION = UpdateNotificationService.UPDATE_PERMISSION;
+    private static final long UPDATE_CHECK_COOLDOWN_NANOS = java.util.concurrent.TimeUnit.SECONDS.toNanos(60L);
     private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ISO_INSTANT;
 
     private final EconomyManager economyManager;
     private final SodaEconomy plugin;
     private final TransactionService transactionService;
     private final PlayerIdentityApi playerIdentityApi;
+    private final UpdateCheckerService updateCheckerService;
+    private final UpdateNotificationService updateNotificationService;
+    private long lastManualUpdateCheckNanos = Long.MIN_VALUE;
 
     private record PlayerStatisticsView(double balance, PlayerTransactionStatistics statistics) {
     }
@@ -75,9 +84,17 @@ public final class EcoCommand implements CommandExecutor, TabCompleter {
 
     public EcoCommand(EconomyManager economyManager, TransactionService transactionService,
                       PlayerIdentityApi playerIdentityApi) {
+        this(economyManager, transactionService, playerIdentityApi, null, null);
+    }
+
+    public EcoCommand(EconomyManager economyManager, TransactionService transactionService,
+                      PlayerIdentityApi playerIdentityApi, UpdateCheckerService updateCheckerService,
+                      UpdateNotificationService updateNotificationService) {
         this.economyManager = economyManager;
         this.transactionService = transactionService;
         this.playerIdentityApi = java.util.Objects.requireNonNull(playerIdentityApi, "playerIdentityApi");
+        this.updateCheckerService = updateCheckerService;
+        this.updateNotificationService = updateNotificationService;
         plugin = SodaEconomy.getInstance();
     }
 
@@ -119,6 +136,9 @@ public final class EcoCommand implements CommandExecutor, TabCompleter {
             case "audit" -> {
                 if (requirePermission(sender, AUDIT_PERMISSION)) handleAudit(sender, args);
             }
+            case "version" -> {
+                if (requireUpdatePermission(sender)) handleVersion(sender, args);
+            }
             case "reload" -> {
                 if (requirePermission(sender, RELOAD_PERMISSION)) handleReload(sender, args);
             }
@@ -135,6 +155,10 @@ public final class EcoCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             return filterCompletions(availableSubcommands(sender), args[0]);
         }
+        if (args.length == 2 && "version".equalsIgnoreCase(args[0])
+                && updateCheckerService != null && sender.hasPermission(UPDATE_PERMISSION)) {
+            return filterCompletions(List.of("check"), args[1]);
+        }
         if (args.length == 2 && acceptsPlayerName(args[0]) && hasPlayerArgumentPermission(sender, args[0])) {
             return playerIdentityApi.suggestKnownNames(args[1], 50);
         }
@@ -150,6 +174,7 @@ public final class EcoCommand implements CommandExecutor, TabCompleter {
         if (hasPermission(sender, AUDIT_PERMISSION)) sendMessage(sender, "show-audit");
         if (hasPermission(sender, STATISTICS_PERMISSION)) sendMessage(sender, "show-stats");
         if (hasPermission(sender, RELOAD_PERMISSION)) sendMessage(sender, "reload-config");
+        if (updateCheckerService != null && sender.hasPermission(UPDATE_PERMISSION)) sendMessage(sender, "show-version");
         if (!hasPermission(sender, ADMIN_PERMISSION)) return;
 
         sendMessage(sender, "set-player-balance");
@@ -159,6 +184,74 @@ public final class EcoCommand implements CommandExecutor, TabCompleter {
         sendMessage(sender, "show-player-balance");
         sendMessage(sender, "pay-all");
         sendMessage(sender, "multi-pay");
+    }
+
+    private void handleVersion(CommandSender sender, String[] args) {
+        if (updateCheckerService == null) {
+            sendMessage(sender, "update-checker-unavailable");
+            return;
+        }
+        if (args.length == 1) {
+            showVersionResult(sender, updateCheckerService.lastResult());
+            return;
+        }
+        if (args.length != 2 || !"check".equalsIgnoreCase(args[1])) {
+            sendMessage(sender, "eco-version-usage");
+            return;
+        }
+
+        if (!updateCheckerService.settings().enabled()) {
+            showVersionResult(sender, updateCheckerService.lastResult());
+            return;
+        }
+
+        long now = System.nanoTime();
+        if (lastManualUpdateCheckNanos != Long.MIN_VALUE) {
+            long elapsed = now - lastManualUpdateCheckNanos;
+            if (elapsed >= 0L && elapsed < UPDATE_CHECK_COOLDOWN_NANOS) {
+                long remainingNanos = UPDATE_CHECK_COOLDOWN_NANOS - elapsed;
+                long seconds = Math.max(1L, java.util.concurrent.TimeUnit.NANOSECONDS.toSeconds(remainingNanos) + 1L);
+                sendMessage(sender, "eco-version-check-cooldown", "seconds", seconds);
+                return;
+            }
+        }
+        lastManualUpdateCheckNanos = now;
+
+        sendMessage(sender, "eco-version-check-started");
+        updateCheckerService.deliverOnMainThread(updateCheckerService.checkNowForced(),
+                result -> showVersionResult(sender, result));
+    }
+
+    private void showVersionResult(CommandSender sender, UpdateCheckResult result) {
+        sendMessage(sender, "eco-version-header");
+        sendMessage(sender, "eco-version-installed", "version", result.installedVersion());
+        sendMessage(sender, "eco-version-latest", "version", result.latest()
+                .map(version -> version.display())
+                .orElse(plugin.getLanguageManager().getMessage("transaction-not-applicable")));
+        sendMessage(sender, "eco-version-status", "status", localizedUpdateStatus(result.status()));
+        sendMessage(sender, "eco-version-channel", "channel", result.channel().configValue());
+        sendMessage(sender, "eco-version-source", "source", result.source());
+        if (result.releasePageOptional().isPresent()) {
+            if (updateNotificationService != null) {
+                updateNotificationService.sendReleaseLink(sender, result.releasePageOptional().orElseThrow());
+            } else {
+                sendMessage(sender, "update-release-url", "url", result.releasePageOptional().orElseThrow());
+            }
+        }
+    }
+
+    private String localizedUpdateStatus(UpdateCheckStatus status) {
+        String key = switch (status) {
+            case NOT_CHECKED -> "update-status-not-checked";
+            case UP_TO_DATE -> "update-status-up-to-date";
+            case UPDATE_AVAILABLE -> "update-status-update-available";
+            case DEVELOPMENT_BUILD -> "update-status-development-build";
+            case CHECK_DISABLED -> "update-status-check-disabled";
+            case CHECK_FAILED -> "update-status-check-failed";
+            case NO_RELEASES_FOUND -> "update-status-no-releases";
+            case INVALID_REMOTE_VERSION -> "update-status-invalid-remote-version";
+        };
+        return plugin.getLanguageManager().getMessage(key);
     }
 
     private void handleReload(CommandSender sender, String[] args) {
@@ -572,6 +665,12 @@ public final class EcoCommand implements CommandExecutor, TabCompleter {
         });
     }
 
+    private boolean requireUpdatePermission(CommandSender sender) {
+        if (sender.hasPermission(UPDATE_PERMISSION)) return true;
+        sendMessage(sender, "no-permission");
+        return false;
+    }
+
     private boolean requirePermission(CommandSender sender, String permission) {
         if (hasPermission(sender, permission)) return true;
         sendMessage(sender, "no-permission");
@@ -590,6 +689,7 @@ public final class EcoCommand implements CommandExecutor, TabCompleter {
         if (hasPermission(sender, AUDIT_PERMISSION)) subcommands.add("audit");
         if (hasPermission(sender, STATISTICS_PERMISSION)) subcommands.add("stats");
         if (hasPermission(sender, RELOAD_PERMISSION)) subcommands.add("reload");
+        if (updateCheckerService != null && sender.hasPermission(UPDATE_PERMISSION)) subcommands.add("version");
         if (hasPermission(sender, ADMIN_PERMISSION)) {
             subcommands.addAll(List.of("set", "give", "remove", "reset", "balance", "payall", "multipay"));
         }

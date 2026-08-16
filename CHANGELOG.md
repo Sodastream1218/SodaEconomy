@@ -7,6 +7,8 @@ The project follows Semantic Versioning for public releases and uses prerelease 
 
 ## [Unreleased]
 
+- Added an optional asynchronous GitHub Releases update checker with semantic release channels, `/eco version`, admin join notifications, runtime reload support, no telemetry, and no automatic downloads/installations.
+
 ### Changed
 
 - Declared Gradle as the canonical release build while keeping Maven as a CI-verified parity build.

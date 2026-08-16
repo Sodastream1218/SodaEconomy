@@ -247,9 +247,24 @@ Run these tests against an isolated MySQL or MariaDB database by setting `SODAEC
 ## Safe config reload
 
 Administrators can use `/eco reload` (permission `sodaeconomy.admin.reload`) to atomically reload
-only the runtime-safe language selection, active language file, prefix, leaderboard and currency-display settings. Storage, database,
-banking, persistence, debug and all other settings remain unchanged until a full server restart. Invalid or malformed configuration never partially replaces the active
-settings. See `docs/config-reload.md` for the exact supported paths and failure behaviour.
+the runtime-safe language selection, active language file, prefix, leaderboard, currency display and
+update-checker settings. Storage, database, banking, persistence, Vault and debug settings remain
+unchanged until a full server restart. Invalid or malformed configuration never partially replaces
+the active settings. See `docs/config-reload.md` for the exact supported paths and failure behaviour.
+
+## Optional update checker
+
+SodaEconomy includes a lightweight update checker that can asynchronously query the official GitHub
+Releases page and notify administrators when a newer allowed release exists. It never downloads or
+installs updates. The checker is configurable under `update-checker`, supports `stable`, `rc`, `beta`
+and `alpha` channels, and can be disabled completely. `/eco version` shows the cached state;
+`/eco version check` starts a rate-limited manual check for users with
+`sodaeconomy.admin.update`.
+
+The request contains no player names, UUIDs, economy values, server name, plugin list, database data
+or SodaEconomy telemetry identifier. Servers that must not make outbound update-check requests can
+set `update-checker.enabled: false`. See [`docs/update-checker.md`](docs/update-checker.md) for the
+configuration, channel rules and failure behaviour.
 
 ## Optional PlaceholderAPI support
 

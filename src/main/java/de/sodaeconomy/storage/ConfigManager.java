@@ -3,6 +3,8 @@ package de.sodaeconomy.storage;
 import de.sodaeconomy.Money;
 import de.sodaeconomy.transaction.TransactionQuery;
 import de.sodaeconomy.integration.vault.VaultIntegrationSettings;
+import de.sodaeconomy.update.UpdateChannel;
+import de.sodaeconomy.update.UpdateCheckerSettings;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -30,12 +32,14 @@ public class ConfigManager {
     private final JavaPlugin plugin;
     private final FileConfiguration config;
     private final AtomicReference<RuntimeConfigSnapshot> runtimeSettings = new AtomicReference<>();
+    private final AtomicReference<UpdateCheckerSettings> updateCheckerSettings = new AtomicReference<>();
 
     public ConfigManager(JavaPlugin plugin) {
         this.plugin = plugin;
         this.config = plugin.getConfig();
         initDefaults();
         runtimeSettings.set(loadInitialRuntimeSettings());
+        updateCheckerSettings.set(loadInitialUpdateCheckerSettings());
     }
 
     private void initDefaults() {
@@ -83,6 +87,19 @@ public class ConfigManager {
                 VaultIntegrationSettings.DEFAULT_OPERATION_TIMEOUT_MILLIS);
         config.addDefault("integrations.vault.warn-after-millis",
                 VaultIntegrationSettings.DEFAULT_WARN_AFTER_MILLIS);
+
+        // === Optional update checker (reload-safe) ===
+        UpdateCheckerSettings updateDefaults = UpdateCheckerSettings.defaults();
+        config.addDefault("update-checker.enabled", updateDefaults.enabled());
+        config.addDefault("update-checker.source", updateDefaults.source());
+        config.addDefault("update-checker.channel", updateDefaults.channel().configValue());
+        config.addDefault("update-checker.check-on-startup", updateDefaults.checkOnStartup());
+        config.addDefault("update-checker.check-interval-hours", updateDefaults.checkIntervalHours());
+        config.addDefault("update-checker.notify-console", updateDefaults.notifyConsole());
+        config.addDefault("update-checker.notify-admins-on-join", updateDefaults.notifyAdminsOnJoin());
+        config.addDefault("update-checker.notify-admins-per-session", updateDefaults.notifyAdminsPerSession());
+        config.addDefault("update-checker.connect-timeout-seconds", updateDefaults.connectTimeoutSeconds());
+        config.addDefault("update-checker.read-timeout-seconds", updateDefaults.readTimeoutSeconds());
 
         // === Leaderboard Defaults ===
         config.addDefault("leaderboard.enabled", true);
@@ -188,14 +205,16 @@ public class ConfigManager {
         }
 
         RuntimeConfigSnapshot candidate;
+        UpdateCheckerSettings updateCandidate;
         String languageCode;
         try {
             candidate = parseRuntimeSettings(reloaded);
+            updateCandidate = parseUpdateCheckerSettings(reloaded);
             languageCode = normalizeLanguageCode(requireString(reloaded, "language", 32));
         } catch (IllegalArgumentException exception) {
             throw new RuntimeConfigReloadException(exception.getMessage(), exception);
         }
-        return new ReloadCandidate(candidate, languageCode);
+        return new ReloadCandidate(candidate, updateCandidate, languageCode);
     }
 
     /**
@@ -213,9 +232,19 @@ public class ConfigManager {
         runtimeSettings.set(candidate);
     }
 
-    public record ReloadCandidate(RuntimeConfigSnapshot runtimeSettings, String languageCode) {
+    public UpdateCheckerSettings getUpdateCheckerSettings() {
+        return updateCheckerSettings.get();
+    }
+
+    public void applyUpdateCheckerSettings(UpdateCheckerSettings candidate) {
+        updateCheckerSettings.set(java.util.Objects.requireNonNull(candidate, "candidate"));
+    }
+
+    public record ReloadCandidate(RuntimeConfigSnapshot runtimeSettings, UpdateCheckerSettings updateCheckerSettings,
+                                  String languageCode) {
         public ReloadCandidate {
             java.util.Objects.requireNonNull(runtimeSettings, "runtimeSettings");
+            java.util.Objects.requireNonNull(updateCheckerSettings, "updateCheckerSettings");
             java.util.Objects.requireNonNull(languageCode, "languageCode");
         }
     }
@@ -306,6 +335,37 @@ public class ConfigManager {
                         config.getBoolean("currency.display_after_amount", false)));
     }
 
+    private UpdateCheckerSettings loadInitialUpdateCheckerSettings() {
+        try {
+            return parseUpdateCheckerSettings(config);
+        } catch (IllegalArgumentException exception) {
+            plugin.getLogger().warning("[Update] Invalid update-checker configuration; update checks are disabled: "
+                    + exception.getMessage());
+            return UpdateCheckerSettings.disabledDefaults();
+        }
+    }
+
+    private UpdateCheckerSettings parseUpdateCheckerSettings(ConfigurationSection source) {
+        String sourceName = requireString(source, "update-checker.source", 32).trim().toLowerCase(java.util.Locale.ROOT);
+        UpdateChannel channel = UpdateChannel.parse(requireString(source, "update-checker.channel", 16))
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "update-checker.channel must be one of: stable, rc, beta, alpha"));
+        return new UpdateCheckerSettings(
+                requireBoolean(source, "update-checker.enabled"),
+                sourceName,
+                channel,
+                requireBoolean(source, "update-checker.check-on-startup"),
+                requireIntegerInRange(source, "update-checker.check-interval-hours",
+                        UpdateCheckerSettings.MIN_CHECK_INTERVAL_HOURS, UpdateCheckerSettings.MAX_CHECK_INTERVAL_HOURS),
+                requireBoolean(source, "update-checker.notify-console"),
+                requireBoolean(source, "update-checker.notify-admins-on-join"),
+                requireBoolean(source, "update-checker.notify-admins-per-session"),
+                requireIntegerInRange(source, "update-checker.connect-timeout-seconds",
+                        UpdateCheckerSettings.MIN_TIMEOUT_SECONDS, UpdateCheckerSettings.MAX_CONNECT_TIMEOUT_SECONDS),
+                requireIntegerInRange(source, "update-checker.read-timeout-seconds",
+                        UpdateCheckerSettings.MIN_TIMEOUT_SECONDS, UpdateCheckerSettings.MAX_READ_TIMEOUT_SECONDS));
+    }
+
     private String normalizeLanguageCode(String configuredLanguage) {
         String normalized = configuredLanguage == null || configuredLanguage.isBlank()
                 ? "EN"
@@ -359,6 +419,19 @@ public class ConfigManager {
         long integral = number.longValue();
         if (!Double.isFinite(decimal) || decimal != integral || integral < 1L || integral > Integer.MAX_VALUE) {
             throw new IllegalArgumentException(path + " must be a positive whole number");
+        }
+        return (int) integral;
+    }
+
+    private int requireIntegerInRange(ConfigurationSection source, String path, int minimum, int maximum) {
+        Object value = source.get(path);
+        if (!(value instanceof Number number)) {
+            throw new IllegalArgumentException(path + " must be a whole number between " + minimum + " and " + maximum);
+        }
+        double decimal = number.doubleValue();
+        long integral = number.longValue();
+        if (!Double.isFinite(decimal) || decimal != integral || integral < minimum || integral > maximum) {
+            throw new IllegalArgumentException(path + " must be a whole number between " + minimum + " and " + maximum);
         }
         return (int) integral;
     }

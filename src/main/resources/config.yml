@@ -87,9 +87,9 @@ storage:
 
 language: "EN"
 
-# Only language, prefix.enabled, prefix.full_prefix, leaderboard and currency display values can
-# be reloaded safely with /eco reload. All other configuration values still require a complete
-# server restart.
+# Language, prefix, leaderboard, currency display and update-checker values can be reloaded
+# safely with /eco reload. Storage, banking, persistence, Vault and other startup-only values still
+# require a complete server restart.
 prefix:
 
   enabled: true
@@ -165,6 +165,47 @@ integrations:
     # Logs a rate-limited warning when a synchronous Vault call takes at least this long.
     # Set to 0 to disable slow-call warnings.
     warn-after-millis: 100
+
+
+# =====================================================================================================
+#                                         --- Update Checker ---
+# =====================================================================================================
+
+# SodaEconomy can perform a small asynchronous HTTPS request to the official GitHub Releases API
+# to tell administrators when a newer release is available. It never downloads or installs files.
+# No player data, UUIDs, economy data, server name, plugin list, database information or telemetry
+# identifier is sent. Disable this section if the server must not make outbound update-check requests.
+# All values in this section are reload-safe with /eco reload.
+update-checker:
+  enabled: true
+
+  # Initial release source. Only "github" is supported in v1.0.0.
+  source: "github"
+
+  # Allowed release maturity. A channel also accepts more mature releases:
+  # stable = stable only; rc = rc + stable; beta = beta + rc + stable; alpha = all four.
+  channel: "stable"
+
+  # Starts the first asynchronous check shortly after a successful plugin startup.
+  check-on-startup: true
+
+  # Period between automatic checks. Valid values: 1 to 168 hours.
+  check-interval-hours: 12
+
+  # Prints a rate-limited console notice when a newer version is found.
+  notify-console: true
+
+  # Notifies online/joining players who have sodaeconomy.admin.update.
+  notify-admins-on-join: true
+
+  # Prevents repeated player notices during the same login session.
+  notify-admins-per-session: true
+
+  # HTTPS connection timeout. Valid values: 1 to 30 seconds.
+  connect-timeout-seconds: 4
+
+  # Maximum Java HTTP request/response time. Valid values: 1 to 60 seconds.
+  read-timeout-seconds: 6
 
 
 # =====================================================================================================
@@ -276,13 +317,14 @@ debug:
   storage: false          # Enables debug output for storage-related operations.
   commands: false         # Enables debug output for command execution.
   banking: false          # Enables debug output for the banking system.
-  integrations: false     # Enables detailed logging for optional integrations such as Vault.
+  integrations: false     # Enables detailed logging for optional integrations and the update checker.
 
 
 ####################################################################################
 # ⚠️ NOTES
 ####################################################################################
-# - Restart the plugin or server after changing configuration values.
+# - /eco reload safely applies language, prefix, leaderboard, currency and update-checker changes.
+# - Restart the server after changing startup-only storage, banking, persistence or integration values.
 # - When using MySQL, ensure that the database exists and is reachable.
 # - last-storage-type.txt records the last successfully active storage; do not edit it manually.
 # - If MYSQL settings are incomplete, the plugin can safely return to the recorded local storage

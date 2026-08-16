@@ -21,7 +21,7 @@ commands:
     usage: /pay <player> <amount>
   eco:
     description: Economy administration, transaction history, audit, and statistics
-    usage: /eco <history|transaction|rollback|audit|stats|reload|set|give|remove|reset|balance|payall|multipay>
+    usage: /eco <history|transaction|rollback|audit|stats|version|reload|set|give|remove|reset|balance|payall|multipay>
   bank:
     description: Bank commands (/bank balance, deposit, withdraw, setbalance)
     usage: /bank <balance|deposit|withdraw|setbalance>
@@ -32,7 +32,10 @@ permissions:
     description: Allows all SodaEconomy administrator commands
     default: op
   sodaeconomy.admin.reload:
-    description: Allows safe reload of language, message files, prefix, leaderboard, and currency display settings
+    description: Allows safe reload of language, prefix, leaderboard, currency, and update-checker settings
+    default: op
+  sodaeconomy.admin.update:
+    description: Allows viewing update information and receiving administrator update notifications
     default: op
   sodaeconomy.history.self:
     description: Allows viewing personal transaction history

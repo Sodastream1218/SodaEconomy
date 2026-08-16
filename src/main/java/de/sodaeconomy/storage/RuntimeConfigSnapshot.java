@@ -4,9 +4,10 @@ import java.util.Objects;
 
 /**
  * Immutable snapshot of the deliberately small configuration surface that is safe to replace
- * while the plugin is running. The selected language is validated and published alongside this
- * snapshot by the plugin reload coordinator, while storage, banking, persistence, debug and all
- * other startup configuration remain outside this snapshot and therefore require a restart.
+ * while the plugin is running. The selected language and the independent update-checker settings
+ * snapshot are validated and published alongside this snapshot by the plugin reload coordinator,
+ * while storage, banking, persistence, debug and other startup-only configuration remain outside
+ * these reloadable snapshots and therefore require a restart.
  */
 public record RuntimeConfigSnapshot(
         PrefixSettings prefix,

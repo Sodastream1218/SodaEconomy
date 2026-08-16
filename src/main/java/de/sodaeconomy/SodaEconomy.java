@@ -26,6 +26,9 @@ import de.sodaeconomy.storage.StorageType;
 import de.sodaeconomy.storage.WalletTransactionStore;
 import de.sodaeconomy.transaction.EconomyTransactionApi;
 import de.sodaeconomy.transaction.TransactionService;
+import de.sodaeconomy.update.GitHubReleaseUpdateSource;
+import de.sodaeconomy.update.UpdateCheckerService;
+import de.sodaeconomy.update.UpdateNotificationService;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.ServicePriority;
 
@@ -47,6 +50,8 @@ public class SodaEconomy extends JavaPlugin {
     private PlayerIdentityService playerIdentityService;
     private OptionalIntegration vaultIntegration = NoopIntegration.INSTANCE;
     private OptionalIntegration placeholderApiIntegration = NoopIntegration.INSTANCE;
+    private UpdateCheckerService updateCheckerService;
+    private UpdateNotificationService updateNotificationService;
     private int interestTaskId = -1;
     private final AtomicBoolean warnedEconomyManagerAccess = new AtomicBoolean();
     private final AtomicBoolean warnedStorageManagerAccess = new AtomicBoolean();
@@ -156,11 +161,36 @@ public class SodaEconomy extends JavaPlugin {
         economyManager = new EconomyManager(runtimeStorage, storageDebug, this, transactionService,
                 playerIdentityService);
         initializeBanking(runtimeStorage);
+        initializeUpdateChecker();
         registerCommands();
         initializeOptionalIntegrations();
 
         getLogger().info("SodaEconomy started successfully with " + storageManager.getCurrentType() + ".");
         getLogger().info("-------------------------------------------");
+        if (updateCheckerService != null) updateCheckerService.start();
+    }
+
+    private void initializeUpdateChecker() {
+        try {
+            updateCheckerService = new UpdateCheckerService(this, new GitHubReleaseUpdateSource(),
+                    configManager.getUpdateCheckerSettings());
+            updateNotificationService = new UpdateNotificationService(this, updateCheckerService, languageManager);
+            getLogger().info(configManager.getUpdateCheckerSettings().enabled()
+                    ? "[Update] Optional update checker initialized (source=github, channel="
+                            + configManager.getUpdateCheckerSettings().channel().configValue() + ")."
+                    : "[Update] Update checker is disabled by configuration.");
+        } catch (RuntimeException exception) {
+            updateCheckerService = null;
+            updateNotificationService = null;
+            if (configManager != null && configManager.isIntegrationsDebug()) {
+                getLogger().log(Level.WARNING,
+                        "[Update] Update checker initialization failed. SodaEconomy continues without update checks.",
+                        exception);
+            } else {
+                getLogger().warning("[Update] Update checker initialization failed; SodaEconomy continues without "
+                        + "update checks.");
+            }
+        }
     }
 
     private void initializeOptionalIntegrations() {
@@ -217,7 +247,8 @@ public class SodaEconomy extends JavaPlugin {
         if (getCommand("pay") != null) getCommand("pay").setExecutor(
                 new PayCommand(economyManager, transactionService, playerIdentityService));
         if (getCommand("eco") != null) {
-            EcoCommand ecoCommand = new EcoCommand(economyManager, transactionService, playerIdentityService);
+            EcoCommand ecoCommand = new EcoCommand(economyManager, transactionService, playerIdentityService,
+                    updateCheckerService, updateNotificationService);
             getCommand("eco").setExecutor(ecoCommand);
             getCommand("eco").setTabCompleter(ecoCommand);
         }
@@ -247,6 +278,16 @@ public class SodaEconomy extends JavaPlugin {
                 getLogger().info("[Banking] Interest task stopped.");
             }
             interestTaskId = -1;
+        }
+
+        if (updateNotificationService != null) {
+            updateNotificationService.close();
+            updateNotificationService = null;
+        }
+
+        if (updateCheckerService != null) {
+            updateCheckerService.close();
+            updateCheckerService = null;
         }
 
         if (placeholderApiIntegration != null) {
@@ -329,8 +370,9 @@ public class SodaEconomy extends JavaPlugin {
 
 
     /**
-     * Atomically replaces only language, prefix, leaderboard and currency runtime settings. No
-     * Bukkit configuration object, service, scheduler or storage component is reinitialized.
+     * Atomically publishes the validated language, prefix, leaderboard, currency and update-checker
+     * runtime snapshots. Storage, banking, persistence and optional integration instances are not
+     * reinitialized.
      */
     public RuntimeConfigSnapshot reloadSafeRuntimeConfiguration() throws RuntimeConfigReloadException {
         if (configManager == null) {
@@ -344,8 +386,11 @@ public class SodaEconomy extends JavaPlugin {
         LanguageManager.LanguageSnapshot languageSnapshot = languageManager.loadLanguageSnapshot(candidate.languageCode());
 
         configManager.applyRuntimeSettings(candidate.runtimeSettings());
+        configManager.applyUpdateCheckerSettings(candidate.updateCheckerSettings());
         languageManager.applyLanguageSnapshot(languageSnapshot);
-        debugCommand("Applied language, prefix, leaderboard and currency runtime settings atomically.");
+        if (updateCheckerService != null) updateCheckerService.applySettings(candidate.updateCheckerSettings());
+        if (updateNotificationService != null) updateNotificationService.onSettingsReloaded(candidate.updateCheckerSettings());
+        debugCommand("Applied language, prefix, leaderboard, currency and update-checker runtime settings atomically.");
         return candidate.runtimeSettings();
     }
 

@@ -250,6 +250,37 @@ class CompatibilityMetadataTest {
         assertTrue(api.contains("BigDecimal amount"));
     }
 
+
+    @Test
+    void updateCheckerIsOptionalPrivacyBoundedAndNeverAnUpdater() throws IOException {
+        String pluginYml = Files.readString(PROJECT_ROOT.resolve("src/main/resources/plugin.yml"));
+        String config = Files.readString(PROJECT_ROOT.resolve("src/main/resources/config.yml"));
+        String source = Files.readString(PROJECT_ROOT.resolve(
+                "src/main/java/de/sodaeconomy/update/GitHubReleaseUpdateSource.java"));
+        String http = Files.readString(PROJECT_ROOT.resolve(
+                "src/main/java/de/sodaeconomy/update/JdkUpdateHttpClient.java"));
+        String checker = Files.readString(PROJECT_ROOT.resolve(
+                "src/main/java/de/sodaeconomy/update/UpdateCheckerService.java"));
+        String docs = Files.readString(PROJECT_ROOT.resolve("docs/update-checker.md"));
+
+        assertTrue(pluginYml.contains("version: 1.0.0"),
+                "plugin.yml version must stay aligned because it is the installed version used by the checker.");
+        assertTrue(pluginYml.contains("sodaeconomy.admin.update:"));
+        assertTrue(pluginYml.contains("default: op"));
+        assertTrue(config.contains("update-checker:"));
+        assertTrue(config.contains("enabled: true"));
+        assertTrue(config.contains("channel: \"stable\""));
+        assertTrue(source.contains("api.github.com/repos/Sodastream1218/SodaEconomy/releases"));
+        assertTrue(source.contains("User-Agent"));
+        assertTrue(!source.contains("Authorization"));
+        assertTrue(http.contains("sendAsync"), "The update HTTP call must remain asynchronous.");
+        assertTrue(checker.contains("SodaEconomy-UpdateChecker"));
+        assertTrue(!source.contains("browser_download_url"));
+        assertTrue(!source.contains("download") && !checker.contains("download"));
+        assertTrue(docs.contains("does not transmit player names"));
+        assertTrue(docs.contains("never downloads, replaces or installs a plugin JAR"));
+    }
+
     @Test
     void compatibilityDocumentationExists() {
         Path documentation = PROJECT_ROOT.resolve("docs/compatibility.md");

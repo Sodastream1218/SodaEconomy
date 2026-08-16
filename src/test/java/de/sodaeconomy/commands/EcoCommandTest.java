@@ -199,7 +199,7 @@ class EcoCommandTest extends MockBukkitTestBase {
 
         for (String key : new String[]{
                 "eco-help-header", "show-history", "show-player-history", "show-transaction", "rollback-transaction",
-                "show-audit", "show-stats", "reload-config",
+                "show-audit", "show-stats", "reload-config", "show-version",
                 "set-player-balance", "give-player-money", "remove-player-money", "reset-player-balance",
                 "show-player-balance", "pay-all", "multi-pay"
         }) {

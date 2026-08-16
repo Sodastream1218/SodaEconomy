@@ -261,4 +261,53 @@ class ConfigManagerTest extends MockBukkitTestBase {
         assertEquals(StorageType.SQLITE, config.getSelectedStorageType());
     }
 
+    @Test
+    void exposesSafeReloadableUpdateCheckerDefaults() {
+        ConfigManager config = plugin.getConfigManager();
+        de.sodaeconomy.update.UpdateCheckerSettings settings = config.getUpdateCheckerSettings();
+
+        assertTrue(settings.enabled());
+        assertEquals("github", settings.source());
+        assertEquals(de.sodaeconomy.update.UpdateChannel.STABLE, settings.channel());
+        assertTrue(settings.checkOnStartup());
+        assertEquals(12, settings.checkIntervalHours());
+        assertEquals(4, settings.connectTimeoutSeconds());
+        assertEquals(6, settings.readTimeoutSeconds());
+    }
+
+    @Test
+    void reloadCandidateValidatesUpdateCheckerSettingsWithoutMutatingLiveState() throws Exception {
+        ConfigManager config = plugin.getConfigManager();
+        de.sodaeconomy.update.UpdateCheckerSettings previous = config.getUpdateCheckerSettings();
+        File file = new File(plugin.getDataFolder(), "config.yml");
+        YamlConfiguration disk = YamlConfiguration.loadConfiguration(file);
+        disk.set("update-checker.enabled", false);
+        disk.set("update-checker.channel", "beta");
+        disk.set("update-checker.check-interval-hours", 24);
+        disk.save(file);
+
+        ConfigManager.ReloadCandidate candidate = config.readRuntimeReloadCandidate();
+
+        assertFalse(candidate.updateCheckerSettings().enabled());
+        assertEquals(de.sodaeconomy.update.UpdateChannel.BETA, candidate.updateCheckerSettings().channel());
+        assertEquals(24, candidate.updateCheckerSettings().checkIntervalHours());
+        assertEquals(previous, config.getUpdateCheckerSettings());
+
+        config.applyUpdateCheckerSettings(candidate.updateCheckerSettings());
+        assertEquals(candidate.updateCheckerSettings(), config.getUpdateCheckerSettings());
+    }
+
+    @Test
+    void rejectsInvalidUpdateCheckerChannelDuringSafeReload() throws Exception {
+        ConfigManager config = plugin.getConfigManager();
+        de.sodaeconomy.update.UpdateCheckerSettings previous = config.getUpdateCheckerSettings();
+        File file = new File(plugin.getDataFolder(), "config.yml");
+        YamlConfiguration disk = YamlConfiguration.loadConfiguration(file);
+        disk.set("update-checker.channel", "nightly");
+        disk.save(file);
+
+        assertThrows(RuntimeConfigReloadException.class, config::readRuntimeReloadCandidate);
+        assertEquals(previous, config.getUpdateCheckerSettings());
+    }
+
 }

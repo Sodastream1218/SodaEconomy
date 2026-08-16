@@ -20,6 +20,18 @@ leaderboard:
 currency:
   symbol: "$"
   display_after_amount: false
+
+update-checker:
+  enabled: true
+  source: "github"
+  channel: "stable"
+  check-on-startup: true
+  check-interval-hours: 12
+  notify-console: true
+  notify-admins-on-join: true
+  notify-admins-per-session: true
+  connect-timeout-seconds: 4
+  read-timeout-seconds: 6
 ```
 
 The command requires `sodaeconomy.admin.reload`; operators and users with
@@ -27,10 +39,11 @@ The command requires `sodaeconomy.admin.reload`; operators and users with
 
 ## Atomic behaviour
 
-The persisted `config.yml` is parsed into a temporary `YamlConfiguration`. The reloadable config
-values and the requested language code are validated first. The active language file is then read
-into a temporary language snapshot and validated against bundled defaults. Only after both
-candidates are valid are the runtime config snapshot and language snapshot published. If the file
+The persisted `config.yml` is parsed into a temporary `YamlConfiguration`. The reloadable economy
+view settings, update-checker settings and requested language code are validated first. The active
+language file is then read into a temporary language snapshot and validated against bundled
+defaults. Only after every candidate is valid are the runtime, update-checker and language snapshots
+published. If the file
 is missing, malformed, unreadable, contains an invalid reloadable value, or the selected language
 file is invalid, the previous snapshots remain active and no partial update is visible.
 
@@ -49,7 +62,7 @@ The command never changes or restarts:
 - banking or interest scheduling
 - starting balance or maximum balance
 - debug settings
-- any other configuration path
+- any other startup-only configuration path
 
 ## Runtime consumers
 
@@ -60,6 +73,9 @@ The command never changes or restarts:
 - The optional PlaceholderAPI resolver reads the same current runtime snapshot for every
   configuration-sensitive resolution. Currency display and leaderboard enable/maximum changes
   therefore require no PlaceholderAPI reload; raw cached balances remain unchanged.
+- The update checker receives its own immutable validated settings snapshot. Disabling it cancels
+  future automatic checks immediately; channel/interval/notification/timeout changes apply to future
+  checks without rebuilding storage, commands or optional integrations.
 
 Editing `plugins/SodaEconomy/language/messages_<code>.yml` and then running `/eco reload` updates
 future messages immediately when the file is valid. Existing already-created Adventure/Text
