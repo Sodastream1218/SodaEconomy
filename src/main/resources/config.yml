@@ -87,7 +87,7 @@ prefix:
   enabled: true
 
   # Prefix shown before plugin messages. Legacy Minecraft § color codes are supported.
-  full_prefix: "§8[§bSodaEconomy§8] §r"
+  full_prefix: "§l§8[§2Soda§aEco§l§8] §r"
 
 
 # =====================================================================================================
