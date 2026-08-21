@@ -7,13 +7,13 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thank you for reporting a bug. Please provide enough information to reproduce it.
+        Thank you for reporting a bug. Check the documentation/troubleshooting guide first, then provide enough information to reproduce the problem. Remove passwords, tokens and other secrets.
 
   - type: input
     id: plugin-version
     attributes:
       label: SodaEconomy version
-      placeholder: "Example: 1.0.0-alpha.1"
+      placeholder: "Example: 1.0.0"
     validations:
       required: true
 
@@ -21,7 +21,15 @@ body:
     id: server-version
     attributes:
       label: Server software and version
-      placeholder: "Example: Paper 1.21.1 build 123"
+      placeholder: "Example: Paper 1.21.x build 123"
+    validations:
+      required: true
+
+  - type: input
+    id: java-version
+    attributes:
+      label: Java version
+      placeholder: "Output of: java -version"
     validations:
       required: true
 
@@ -33,18 +41,25 @@ body:
         - YAML
         - SQLite
         - MySQL
+        - MariaDB
     validations:
       required: true
+
+  - type: input
+    id: database-version
+    attributes:
+      label: Database version (MYSQL/MariaDB only)
+      placeholder: "Example: MariaDB 11.8"
 
   - type: checkboxes
     id: integrations
     attributes:
-      label: Active integrations
+      label: Active integrations / topology
       options:
         - label: Vault
         - label: PlaceholderAPI
         - label: Floodgate / Geyser
-        - label: Multi-server MySQL setup
+        - label: Multi-server shared MYSQL/MariaDB
 
   - type: textarea
     id: description
@@ -69,6 +84,7 @@ body:
     id: logs
     attributes:
       label: Relevant logs or stack trace
+      description: Remove credentials and other sensitive data.
       render: shell
 
   - type: checkboxes
@@ -76,7 +92,9 @@ body:
     attributes:
       label: Final checks
       options:
-        - label: I tested this with the latest available SodaEconomy version.
+        - label: I checked the troubleshooting/documentation pages.
           required: true
-        - label: I removed passwords, tokens and other sensitive data from the logs.
+        - label: I tested this with the latest available SodaEconomy release that applies to my setup.
+          required: true
+        - label: I removed passwords, tokens and other sensitive data.
           required: true

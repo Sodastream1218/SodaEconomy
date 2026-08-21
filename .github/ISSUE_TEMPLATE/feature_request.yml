@@ -38,6 +38,7 @@ body:
         - API
         - Vault
         - PlaceholderAPI
+        - Update checker
         - Floodgate / Geyser
         - Configuration
         - Documentation

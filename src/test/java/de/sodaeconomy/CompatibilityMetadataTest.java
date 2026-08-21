@@ -74,9 +74,9 @@ class CompatibilityMetadataTest {
                 "The release-JAR verifier must reject accidentally shaded Vault API classes.");
         assertTrue(pom.contains("<artifactId>bukkit</artifactId>"),
                 "VaultAPI's legacy transitive Bukkit artifact must stay excluded.");
-        assertTrue(Files.isRegularFile(PROJECT_ROOT.resolve("docs/vault-integration.md")));
+        assertTrue(Files.isRegularFile(PROJECT_ROOT.resolve("docs/vault.md")));
 
-        String buildContracts = Files.readString(PROJECT_ROOT.resolve("docs/build-contracts.md"));
+        String buildContracts = Files.readString(PROJECT_ROOT.resolve("docs/maintainers/build-contracts.md"));
         assertTrue(buildContracts.contains("VaultAPI"));
         assertTrue(buildContracts.contains("Maven scope: provided"));
         assertTrue(buildContracts.contains("Gradle production configuration: compileOnly"));
@@ -102,7 +102,7 @@ class CompatibilityMetadataTest {
                 "The release-JAR verifier must reject accidentally shaded PlaceholderAPI classes.");
         assertTrue(workflow.contains("me/clip/placeholderapi/"));
         assertTrue(workflow.contains("net/milkbowl/vault/"));
-        assertTrue(Files.isRegularFile(PROJECT_ROOT.resolve("docs/placeholderapi-integration.md")));
+        assertTrue(Files.isRegularFile(PROJECT_ROOT.resolve("docs/placeholderapi.md")));
 
         String bootstrap = Files.readString(PROJECT_ROOT.resolve(
                 "src/main/java/de/sodaeconomy/integration/placeholderapi/PlaceholderApiIntegrationBootstrap.java"));
@@ -133,7 +133,7 @@ class CompatibilityMetadataTest {
         assertTrue(!gradle.contains("com.mysql:mysql-connector-j"));
         assertTrue(gradle.contains("testRuntimeOnly(\"org.mariadb.jdbc:mariadb-java-client:3.5.9\")"));
         assertTrue(!gradle.contains("relocate(\"com.mysql\""));
-        assertTrue(Files.isRegularFile(PROJECT_ROOT.resolve("docs/jdbc-driver-migration.md")));
+        assertTrue(Files.isRegularFile(PROJECT_ROOT.resolve("docs/maintainers/jdbc-driver-migration.md")));
         Path notices = PROJECT_ROOT.resolve("THIRD_PARTY_NOTICES.md");
         Path packagedNotices = PROJECT_ROOT.resolve("src/main/resources/META-INF/THIRD_PARTY_NOTICES.md");
         assertTrue(Files.isRegularFile(notices));
@@ -181,9 +181,9 @@ class CompatibilityMetadataTest {
     void gradleIsCanonicalAndMavenParityIsVerifiedInCi() throws IOException {
         String workflow = Files.readString(PROJECT_ROOT.resolve(".github/workflows/test.yml"));
         String readme = Files.readString(PROJECT_ROOT.resolve("README.md"));
-        String contracts = Files.readString(PROJECT_ROOT.resolve("docs/build-contracts.md"));
+        String contracts = Files.readString(PROJECT_ROOT.resolve("docs/maintainers/build-contracts.md"));
 
-        assertTrue(readme.contains("Gradle is the **canonical release build**"));
+        assertTrue(readme.contains("Gradle is the canonical release build"));
         assertTrue(contracts.contains("**Gradle is the canonical SodaEconomy release build.**"));
         assertTrue(workflow.contains("name: Maven build parity"));
         assertTrue(workflow.contains("./mvnw -B -ntp clean verify"));
@@ -218,14 +218,14 @@ class CompatibilityMetadataTest {
         String config = Files.readString(PROJECT_ROOT.resolve("src/main/resources/config.yml"));
         String pom = Files.readString(PROJECT_ROOT.resolve("pom.xml"));
 
-        assertTrue(pluginYml.contains("description: Production-focused economy system"));
+        assertTrue(pluginYml.contains("description: Reliable Paper economy"));
         assertTrue(!pluginYml.contains("Zeigt dein") && !pluginYml.contains("Erlaubt die Nutzung"));
         assertTrue(config.contains("user: sodaeconomy"));
         assertTrue(!config.contains("user: root"));
         String mysqlStorage = Files.readString(PROJECT_ROOT.resolve(
                 "src/main/java/de/sodaeconomy/storage/MySQLStorage.java"));
         assertTrue(mysqlStorage.contains("getString(\"storage.mysql.user\", \"sodaeconomy\")"));
-        assertTrue(pom.contains("<description>A production-focused economy system for Minecraft Paper</description>"));
+        assertTrue(pom.contains("<description>Reliable economy plugin for Minecraft Paper with local/network storage and optional integrations</description>"));
     }
 
     @Test

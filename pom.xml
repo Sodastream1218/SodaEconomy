@@ -10,7 +10,7 @@
     <packaging>jar</packaging>
 
     <name>SodaEconomy</name>
-    <description>A production-focused economy system for Minecraft Paper</description>
+    <description>Reliable economy plugin for Minecraft Paper with local/network storage and optional integrations</description>
 
     <properties>
         <java.version>17</java.version>

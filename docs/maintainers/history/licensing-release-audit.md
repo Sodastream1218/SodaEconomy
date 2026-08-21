@@ -47,7 +47,7 @@ repository-governance documentation:
 - `.github/CODEOWNERS`
 - `.github/SUPPORT.md`
 - `.github/pull_request_template.md`
-- `docs/dependency-license-audit.md`
+- `docs/maintainers/dependency-license-audit.md`
 - embedded `META-INF` legal resources
 - bundled third-party license copies
 

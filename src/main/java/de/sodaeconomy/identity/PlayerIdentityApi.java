@@ -17,6 +17,8 @@ import java.util.concurrent.CompletableFuture;
  * Persistent resolution and display-name batch methods are asynchronous and never fabricate an
  * account for an unknown name. Name resolution returns an empty result when a normalized name is
  * unknown or maps to more than one UUID.</p>
+ *
+ * @since 1.0
  */
 public interface PlayerIdentityApi {
     /** Returns a process-local cached identity, without storage or Bukkit access. */

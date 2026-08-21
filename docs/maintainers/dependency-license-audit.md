@@ -47,4 +47,4 @@ See:
 - `LICENSE-FAQ.md`
 - `TRADEMARKS.md`
 - `THIRD_PARTY_NOTICES.md`
-- `docs/licensing-release-audit.md`
+- `docs/maintainers/history/licensing-release-audit.md`

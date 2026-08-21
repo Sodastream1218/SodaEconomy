@@ -1,33 +1,46 @@
-# Installing the SodaEconomy Maintainer Kit
+# Installing SodaEconomy
 
-Copy the files from this package into the root of the local SodaEconomy repository while preserving
-the directory structure.
+This guide covers a normal server installation. For configuration details, database migration and
+network setups, continue with the linked documentation after the first successful startup.
 
-The kit adds only new files and does not replace existing issue forms, workflows, or the pull request
-template.
+## Requirements
 
-After copying, run:
+- Paper or Purpur in the supported modern server range (v1.0.0 target: 1.20.2+)
+- A Java runtime supported by that server; SodaEconomy itself is compiled for Java 17
+- Write access to the server's `plugins/` directory
 
-```powershell
-git status
-git add CONTRIBUTING.md CODE_OF_CONDUCT.md MAINTAINERS.md CHANGELOG.md .github/SECURITY.md .github/SUPPORT.md .github/FUNDING.yml .github/CODEOWNERS
-git commit -m "Add project maintainer documentation"
-git push
-```
+Vault, PlaceholderAPI and Floodgate are optional.
 
-Then enable GitHub private vulnerability reporting:
+## Install
 
-1. Repository **Settings**
-2. **Security** / **Code security and analysis**
-3. Enable **Private vulnerability reporting**
+1. Download the official `SodaEconomy-1.0.0.jar` release artifact.
+2. Stop the server.
+3. Copy the JAR into `plugins/`.
+4. Start the server.
+5. Confirm that SodaEconomy enables successfully and creates `plugins/SodaEconomy/config.yml`.
+6. Join with a player and run `/balance`.
 
-`FUNDING.yml` contains comments only and can remain that way until a real funding platform is chosen.
+The default storage backend is SQLite and needs no external database setup.
 
+## Optional integrations
 
-## Optional PlaceholderAPI integration
+- **Vault:** install Vault and restart. SodaEconomy registers as an economy provider when
+  `integrations.vault.enabled: true`.
+- **PlaceholderAPI:** install PlaceholderAPI and restart. The `%sodaeconomy_...%` expansion registers
+  automatically; there is no separate eCloud expansion to download.
+- **Floodgate:** optional; when available, SodaEconomy can classify known Bedrock identities.
 
-Install PlaceholderAPI normally on the Paper/Purpur server if scoreboards, TAB lists, holograms,
-chat formatters or GUI plugins should consume SodaEconomy placeholders. SodaEconomy detects it
-automatically; no separate expansion download and no SodaEconomy configuration switch are
-required. Without PlaceholderAPI, SodaEconomy starts and operates normally. See
-`docs/placeholderapi-integration.md` for the supported `%sodaeconomy_...%` contract.
+## MariaDB / MySQL
+
+Do not switch an existing server to `storage.type: MYSQL` before reading
+[`docs/database.md`](docs/database.md). Create a dedicated database/user, configure the credentials,
+back up the current storage, then restart. Storage changes are startup-only and may trigger migration.
+
+## Next steps
+
+- [Detailed installation](docs/installation.md)
+- [Configuration](docs/configuration.md)
+- [Commands](docs/commands.md)
+- [Permissions](docs/permissions.md)
+- [FAQ](docs/faq.md)
+- [Troubleshooting](docs/troubleshooting.md)

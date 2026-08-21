@@ -1,297 +1,256 @@
 # SodaEconomy
 
-SodaEconomy is a Paper/Purpur economy plugin with YAML, SQLite, and MySQL/MariaDB storage backends.
-Wallet balances remain in their dedicated balance store for fast reads. Every wallet mutation is
-also written to an immutable transaction journal, so normal balance reads never replay history.
+**A reliable, auditable economy for Paper and Purpur — simple on one server, ready for networks.**
 
+SodaEconomy provides wallets, optional personal bank accounts, Vault and PlaceholderAPI integration,
+transaction history, rollback tooling, safe storage migration, and production-focused persistence.
+It is designed to be easy to install on a single server while keeping the data-integrity guarantees
+needed by larger multi-server setups.
+
+> **v1.0.0 target:** Paper/Purpur 1.20.2+, Java 17+ bytecode, SQLite/YAML or MySQL/MariaDB storage.
+
+**Start here:** [Installation](docs/installation.md) · [Configuration](docs/configuration.md) ·
+[Commands](docs/commands.md) · [Permissions](docs/permissions.md) · [Documentation](docs/README.md) ·
+[GitHub Releases](https://github.com/Sodastream1218/SodaEconomy/releases)
+
+## Why SodaEconomy?
+
+Many economy plugins are easy to start with but become harder to trust once multiple integrations,
+storage migrations, retries, or network servers are involved. SodaEconomy is built around a small
+set of predictable rules:
+
+- **Money changes go through one transaction path.** Wallet mutations are validated, persisted and
+  journaled instead of being scattered across commands and integrations.
+- **Storage failures are not disguised as real zero balances.** Read failures remain failures, while
+  legitimate empty accounts remain legitimate empty accounts.
+- **Local storage is crash-aware.** YAML and SQLite use an ordered asynchronous persistence path with
+  a compact recovery WAL for accepted writes that have not reached the backend yet.
+- **Network storage is database-authoritative.** MySQL and MariaDB use transactional row locking,
+  migration safeguards and multi-instance concurrency handling.
+- **Optional integrations stay optional.** Vault, PlaceholderAPI and Floodgate are detected only when
+  installed; SodaEconomy works without them.
+
+The goal is reliability and clear administration, not exaggerated feature claims.
+
+## Feature highlights
+
+### Core economy
+
+- Player wallets with configurable starting and maximum balances
+- `/balance`, `/pay`, `/topbalance` and administrator economy commands
+- Exact internal money representation in integer minor units
+- Persistent UUID-based player identity registry
+- English, German and Spanish message files
+
+### Audit and administration
+
+- Immutable wallet transaction journal
+- Player history, transaction details, audit summaries and server statistics
+- Reversing rollback transactions for eligible wallet operations
+- Safe, atomic runtime reload for documented settings
+- Privacy-friendly optional GitHub release checker with `/eco version`
+
+### Banking
+
+- Optional personal bank balances
+- Wallet ↔ bank deposits and withdrawals
+- Optional scheduled interest with a configurable per-account cap
+- Administrative bank-balance control
+
+### Storage and networks
+
+- **SQLite** — recommended default for most single-server installations
+- **YAML** — readable local storage for small/simple setups
+- **MySQL / MariaDB** — shared network storage through MariaDB Connector/J
+- Safe storage migration with explicit MySQL→local safeguards
+- Tested schema migrations and shared-database concurrency paths
+
+### Integrations
+
+- **Vault** — optional economy provider for compatible shops, rewards and other plugins
+- **PlaceholderAPI** — native cached `%sodaeconomy_...%` placeholders; no eCloud expansion required
+- **Floodgate** — optional Bedrock identity classification while keeping UUIDs authoritative
+
+## Support matrix
+
+| Area | v1.0.0 support target |
+| --- | --- |
+| Server | Paper / Purpur 1.20.2+ within the modern Paper API line |
+| Java | Java 17-compatible plugin bytecode; use the runtime required by your Paper version |
+| SQLite | Supported; recommended single-server default |
+| YAML | Supported; best suited to small/simple local setups |
+| MySQL | Supported through the shared JDBC implementation |
+| MariaDB | Supported through MariaDB Connector/J |
+| Multi-server | Supported with one shared MySQL/MariaDB database |
+| Vault | Optional |
+| PlaceholderAPI | Optional |
+| Floodgate | Optional |
+| Folia | Not currently advertised as supported |
+| Spigot/Bukkit-only | Not currently advertised as supported |
+
+See the [full compatibility matrix](docs/compatibility.md) before deploying to a new server line.
+
+## Quick start
+
+1. Download the official `SodaEconomy-1.0.0.jar` from the GitHub Releases page or another official
+   SodaEconomy distribution page.
+2. Put the JAR into your Paper/Purpur server's `plugins/` directory.
+3. Start the server once. SodaEconomy creates `plugins/SodaEconomy/config.yml` and its language files.
+4. Keep the default `storage.type: SQLITE` unless you intentionally need YAML or a shared SQL database.
+5. Adjust your currency, starting balance and optional features, then use `/eco reload` for settings
+   documented as reload-safe or restart after startup-only changes.
+6. Test `/balance`, `/pay` and `/topbalance` with a normal player account.
+
+Optional integrations are automatic after installation: add Vault or PlaceholderAPI to the server and
+restart when required. No separate SodaEconomy PlaceholderAPI expansion download is needed.
+
+For the complete first-install flow, see [Installation](docs/installation.md).
+
+## Choose your storage
+
+| Backend | Recommended for | Notes |
+| --- | --- | --- |
+| SQLite | Most single servers | Default; local database file; strong balance between simplicity and reliability |
+| YAML | Small/simple servers, human-readable local data | Supported, but not the preferred choice for large player counts |
+| MySQL/MariaDB | Networks and multiple Paper instances | Shared authoritative database; use a dedicated `sodaeconomy` database account |
+
+Changing storage is a migration operation. **Back up the current backend first** and read the
+[database](docs/database.md) and [migration](docs/migration.md) guides before switching an existing server.
+
+## Optional integrations
+
+| Integration | Required? | What it adds |
+| --- | --- | --- |
+| Vault | No | Registers SodaEconomy as a Vault economy provider |
+| PlaceholderAPI | No | Cached wallet/bank/total/rank placeholders for TAB, scoreboards, chat, GUIs and holograms |
+| Floodgate | No | Classifies known Bedrock identities when the Floodgate API is available |
+| Update checker | No | Asynchronously checks official GitHub Releases and informs administrators; never installs updates |
+
+Read [Vault](docs/vault.md), [PlaceholderAPI](docs/placeholderapi.md), and the
+[update checker guide](docs/update-checker.md) for exact behaviour.
+
+## Commands
+
+Common player commands:
+
+```text
+/balance
+/pay <player> <amount>
+/topbalance [limit]
+/bank balance
+/bank deposit <amount>
+/bank withdraw <amount>
+```
+
+Administrator and audit tools live under `/eco`, for example:
+
+```text
+/eco balance <player>
+/eco give <player> <amount>
+/eco history <player> [page]
+/eco transaction <transactionId>
+/eco rollback <transactionId>
+/eco stats [player]
+/eco reload
+/eco version [check]
+```
+
+See the [complete command reference](docs/commands.md) and
+[permission reference](docs/permissions.md). The banking commands are available only when the banking
+feature is enabled.
+
+## Configuration
+
+The default configuration is intentionally usable without an external database. Important sections:
+
+- `storage` — SQLite/YAML/MySQL selection and migration safety
+- `language`, `prefix`, `currency` — presentation and localization
+- `balance`, `max_balance`, `leaderboard` — core economy behaviour
+- `banking` — optional personal bank accounts and interest
+- `integrations.vault` — Vault provider settings
+- `update-checker` — optional GitHub release notifications
+- `transactions` — history page size
+- `persistence.async` — local write-behind/recovery behaviour
+- `debug` — targeted diagnostic logging
+
+The [configuration guide](docs/configuration.md) lists every meaningful option, its default and whether
+`/eco reload` can apply it without a restart.
+
+## PlaceholderAPI
+
+When PlaceholderAPI is installed, SodaEconomy registers its expansion automatically. Examples:
+
+```text
+%sodaeconomy_balance%
+%sodaeconomy_balance_formatted%
+%sodaeconomy_bank_balance%
+%sodaeconomy_total_balance_formatted%
+%sodaeconomy_currency_symbol%
+%sodaeconomy_baltop_position%
+```
+
+Placeholder callbacks use cached presentation snapshots and do not perform synchronous database I/O.
+See [PlaceholderAPI](docs/placeholderapi.md) for the full list and failure semantics.
+
+## Vault
+
+Vault is optional. When installed and enabled, SodaEconomy registers one economy provider and routes
+wallet deposits/withdrawals through the same transaction and journal path as native SodaEconomy
+operations. Vault's named-bank API is **not** implemented; SodaEconomy's `/bank` feature is a separate
+personal-bank model.
+
+See [Vault integration](docs/vault.md).
+
+## Developer API
+
+Plugins should obtain `EconomyTransactionApi` and `PlayerIdentityApi` from Bukkit's
+`ServicesManager`. Do not mutate `Storage`, `EconomyManager`, `TransactionService` or concrete storage
+implementations directly.
+
+New integrations should prefer the `BigDecimal` or `*Minor` money mutation APIs. The historical
+`double` overloads remain for v1 compatibility.
+
+See [Developer API](docs/developer-api.md) for examples, threading rules, idempotency and error semantics.
+
+## Documentation
+
+The documentation hub is [`docs/README.md`](docs/README.md). Useful starting points:
+
+- [Installation](docs/installation.md)
+- [Configuration](docs/configuration.md)
+- [Commands](docs/commands.md)
+- [Permissions](docs/permissions.md)
+- [Database & networks](docs/database.md)
+- [Updating & migration](docs/migration.md)
+- [FAQ](docs/faq.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Compatibility](docs/compatibility.md)
+
+## Updates, backups and support
+
+Before upgrading SodaEconomy, changing storage backends or changing network topology, create a backup
+of the active economy storage. Database/config migrations are designed to be safe, but a backup is
+still the correct operational boundary for economy data.
+
+For problems, start with [Troubleshooting](docs/troubleshooting.md), then use the repository's issue
+forms or GitHub Discussions as described in [Support](.github/SUPPORT.md). Security vulnerabilities
+must follow [SECURITY.md](.github/SECURITY.md) and should not be disclosed in public issues.
+
+## Build contract
+
+For contributors and maintainers: **Gradle is the canonical release build**. Maven remains a supported,
+CI-verified parity build. The official public plugin JAR is the Gradle `shadowJar` output
+`build/libs/SodaEconomy-1.0.0.jar`; the Gradle `-plain.jar` and Maven `original-*.jar` are not release
+artifacts.
+
+See [maintainer build contracts](docs/maintainers/build-contracts.md).
 
 ## License
 
-SodaEconomy is **source available**, not open source. It is licensed under the
-Apache License 2.0 subject to the Commons Clause License Condition v1.0 and the
-express permissions in [`LICENSE`](LICENSE).
-
-Use on monetized Minecraft servers and networks is expressly permitted,
-including revenue from ranks, shops, crates, donations, advertising,
-subscriptions, and server access. General Minecraft hosting may also include
-SodaEconomy as one component of a broader offering.
-
-The restriction applies to commercializing SodaEconomy itself: the JAR or
-source code may not be sold, placed behind a paid download, rebranded as a paid
-economy plugin, or offered as a substantially equivalent commercial substitute
-without prior written permission.
-
-Read the complete documents:
-
-- [`LICENSE`](LICENSE) — authoritative software terms
-- [`LICENSE-FAQ.md`](LICENSE-FAQ.md) — practical usage examples
-- [`TRADEMARKS.md`](TRADEMARKS.md) — project-name and branding rules
-- [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) — dependency attribution
-
-## Compatibility
-
-SodaEconomy is built as a Java 17 plugin for modern Paper/Purpur servers. The current release
-candidate targets Paper/Purpur 1.20.2 and newer within the modern Paper API line while keeping
-`api-version: 1.20` and compiling against Paper API 1.20.2. Newer Paper lines must be verified by
-runtime smoke tests before being advertised as supported.
-
-The project does not currently claim support for Folia, Bukkit/Spigot-only servers, Paper below
-1.20.2, or Java runtimes below 17. See `docs/compatibility.md` for the compatibility matrix, Java
-runtime notes, Java 17/21 verification matrix, and the required server smoke tests.
-
-## Transaction API
-
-The plugin registers `EconomyTransactionApi` through Bukkit's `ServicesManager` after its storage
-has initialized successfully. This interface is the supported public integration boundary. Other
-plugins must obtain and use it instead of mutating `EconomyManager`, `Storage`,
-`WalletTransactionStore`, or concrete storage implementations directly. Those lower-level classes
-are implementation details and can bypass the journal, runtime cache, and transaction events.
-
-```java
-RegisteredServiceProvider<EconomyTransactionApi> registration = Bukkit.getServicesManager()
-        .getRegistration(EconomyTransactionApi.class);
-if (registration == null) {
-    return;
-}
-
-EconomyTransactionApi economy = registration.getProvider();
-economy.transfer(sourceId, targetId, new BigDecimal("25.00"), TransactionOrigin.api("ExamplePlugin"),
-        TransactionRequestOptions.idempotent("Quest reward payment", Map.of("quest", "starter"),
-                "starter-quest:" + sourceId))
-        .thenAccept(result -> {
-            if (result.isSuccessful()) {
-                // The balance change and journal record are durably committed.
-            }
-        });
-```
-
-The API is asynchronous. Do not access Bukkit player objects from completion callbacks without
-scheduling back to the Paper main thread. `TransactionResult` contains the immutable record on a
-committed or persistable failed operation and a machine-readable `TransactionFailureReason`.
-
-The original `double` mutation methods remain supported for compatibility. New integrations that need
-exact decimal semantics should prefer the `BigDecimal` overloads or the `depositMinor`,
-`withdrawMinor`, `transferMinor`, and `setBalanceMinor` methods. Minor-unit methods use SodaEconomy's
-canonical two-decimal representation directly and avoid binary floating-point round-trips.
-
-`getStoredBalance(UUID)` reads a wallet balance asynchronously without creating an account or
-awarding a starting balance; it returns `0.0` when no account is stored. Persistent read failures
-complete exceptionally and are never converted into fake zero values or empty snapshots. Exact
-read-only snapshot methods expose wallet and bank balances in canonical minor units for
-high-frequency presentation integrations without floating-point conversion. Use an idempotency key for
-operations that may be retried by the calling plugin. The key must identify one logical operation
-and must not be reused for unrelated payments.
-
-Persistent read/error semantics for commands, integrations and cached presentation data are documented
-in [`docs/read-failure-semantics.md`](docs/read-failure-semantics.md).
-
-## Player identity API and optional Floodgate support
-
-SodaEconomy maintains a central, UUID-based player identity registry for commands, transaction
-history and leaderboards. `PlayerIdentityApi` is registered through Bukkit's `ServicesManager` as a
-read-only integration surface. Unknown names never create synthetic offline accounts.
-
-Known names and platform types are persisted by every storage backend and migrate together with the
-rest of the economy snapshot. MySQL uses schema version 6 and SQLite uses schema version 4 for the
-identity registry. Leaderboards batch-resolve persisted names so another backend can display a
-player correctly even when that player has never joined the local instance.
-
-Floodgate is an optional soft dependency. When its API is available, SodaEconomy classifies
-Floodgate UUIDs as `BEDROCK`; without Floodgate, the plugin remains fully functional. The economy
-account key is always the Bukkit/Floodgate UUID. See `docs/player-identities.md` for threading,
-collision and proxy-network details.
-
-## Public API boundary and compatibility
-
-`EconomyTransactionApi` is the supported integration contract for balance mutations, exact read-only
-balance snapshots, and transaction history. `PlayerIdentityApi` is the supported read-only contract for central UUID/name
-resolution. `SodaEconomy` managers, storage contracts, concrete storage classes, and the concrete
-service implementations are internal runtime infrastructure. They are retained only for legacy
-compatibility during the transition to the public APIs and must not be used by new plugins.
-
-The public API uses asynchronous operations so integrations receive a durable result rather than a
-local cache prediction. It is intentionally the only integration surface that preserves validation,
-immutable history, rollback eligibility, statistics, and transaction events together. Low-level
-storage mutations are runtime-guarded and may throw `UnauthorizedStorageAccessException` when used
-from outside SodaEconomy's internal storage/transaction packages.
-
-For new integrations, exact monetary mutations are available through `depositMinor`, `withdrawMinor`,
-`transferMinor`, and `setBalanceMinor`, plus `BigDecimal` convenience overloads. The historical
-`double` methods remain supported for compatibility. SodaEconomy's built-in exact methods stay in
-`long` minor units throughout the transaction path, including values that cannot be represented
-exactly by binary floating point.
-
-## Asynchronous persistence
-
-By default, `persistence.async.enabled` keeps runtime wallet and bank balances in a protected
-in-memory cache for local YAML/SQLite installations. One dedicated `SodaEconomy-Persistence` worker
-writes accepted operations to the authoritative backend in strict acceptance order. MySQL/MariaDB
-continues using its database-authoritative path and does not use the local write-behind queue.
-
-Before a queued local mutation is reported as accepted, SodaEconomy appends one compact recovery
-WAL record and forces it to disk. The record contains only the unresolved mutation's absolute
-post-write account state plus its immutable wallet transaction when applicable. Long-term
-transaction history remains in YAML/SQLite and is **not** copied into recovery storage on every
-mutation. Once persistence catches up, committed recovery entries are compacted away and a fully
-drained queue leaves no recovery WAL payload.
-
-The queue remains bounded, retries a failed head write with capped exponential backoff, and never
-lets a later write overtake it. A normal plugin/server shutdown drains only up to the configured
-shutdown deadline; any remaining accepted local mutation stays represented by the recovery WAL for
-startup reconciliation. Audit/history and statistics API queries remain asynchronous; Bukkit
-messages and events are still scheduled only on the Paper main thread.
-
-`EconomyTransactionApi` futures preserve authoritative durable-completion semantics: they complete
-after the queued ledger record has reached the backend. Synchronous gameplay/compatibility methods
-may return after the local recovery durability barrier so their accepted state survives an
-immediate process crash within the realistic guarantees of Java and the host filesystem.
-
-See [`docs/local-persistence-recovery.md`](docs/local-persistence-recovery.md) for the recovery state
-machine, corruption behavior, legacy-format upgrade path and opt-in stress tests.
-
-## Ledger and rollback
-
-Each wallet record contains a UUID, UTC timestamp (millisecond precision), type, status, origin,
-source/target player UUIDs, requested and applied amount in minor units, wallet snapshots, reason,
-metadata, and optional rollback/batch identifiers.
-
-Rollbacks create a new `ROLLBACK` record linked to the original record; records are never deleted
-or modified. A successful rollback is unique per original transaction. A rollback can fail safely,
-for example when the recipient already spent the funds or a configured wallet maximum would be
-exceeded.
-
-Wallet-to-bank and bank-to-wallet moves are committed atomically with the wallet-side journal
-record. Pure bank administration and interest remain outside the wallet ledger until bank-ledger
-records are introduced, but they are coordinated by the same service lock.
-
-## Storage migration
-
-When changing storage type, `StorageSnapshot` migrates wallet balances, bank balances, wallet
-journal records, and known player identities together. Existing pre-ledger balances are preserved and receive one
-`LEGACY_OPENING_BALANCE` baseline record when the journal is first enabled; older history cannot
-be reconstructed retrospectively.
-
-## Statistics and audit queries
-
-`EconomyTransactionApi#getStatistics()` returns current wallet circulation, average balance,
-richest account, journal status counts, and wallet money sources/sinks. `getAnalytics()` adds the
-largest successful wallet transaction and transfer volume; `getPlayerStatistics(UUID)` supplies a
-participant's audit aggregate. Transfers and wallet-bank moves do not count as sources or sinks
-because they only relocate existing funds.
-
-Use `findTransactions(TransactionQuery)` for bounded, paginated audit/history queries by player,
-transaction ID, type, status, or time range. The SQL backends index common participant and time
-queries; YAML is intended for smaller installations.
-
-## In-game ledger commands
-
-`/eco history [page]` lets players view their own wallet history. Administrators, or users with
-`sodaeconomy.history.others`, can use `/eco history <player> [page]` for another player.
-
-The following administrative commands are backed by the same immutable journal and transaction
-service:
-
-- `/eco transaction <transactionId>` — complete journal record details
-- `/eco rollback <transactionId>` — creates an atomic reversing entry; it never deletes history
-- `/eco audit <player>` — transaction counts, received/sent totals, net change, and time range
-- `/eco stats [player]` — server-wide analytics or a player's balance and audit statistics
-
-The additional permissions are `sodaeconomy.transaction`, `sodaeconomy.rollback`,
-`sodaeconomy.audit`, and `sodaeconomy.stats` (all default to operators). `sodaeconomy.history.self`
-defaults to all players. `sodaeconomy.admin` remains a compatibility override for every `/eco`
-administrative operation.
-
-Configure `transactions.history-page-size` in `config.yml` to choose 1–100 rows per history page.
-Player statistics read existing data without creating a new wallet account.
-
-## Development verification
-
-Gradle is the **canonical release build**. Use it for release-equivalent verification and artifact
-creation:
-
-```text
-./gradlew --no-daemon clean test
-./gradlew --no-daemon mysqlIntegrationTest jacocoTestReport jacocoTestCoverageVerification shadowJar
-```
-
-Maven remains supported as a secondary parity build and is also verified by CI:
-
-```text
-./mvnw -B -ntp clean verify
-```
-
-The test suite includes unit tests for the transaction service and shared wallet-ledger storage
-contracts for YAML and SQLite. The Gradle CI matrix runs the shared JDBC integration suite against
-MySQL 8.4 and MariaDB 11.8. See `docs/build-contracts.md` for the canonical-build contract.
-
-## Shared MySQL maintenance gate
-
-Storage migrations involving MySQL use a database-backed mutation gate. Every MySQL wallet or bank
-mutation takes a shared row lock on the gate for the lifetime of its ACID transaction. Starting a
-migration takes the exclusive row lock, waits for already active mutations to finish, and then marks
-the gate as active. Other Paper/Purpur instances reject new mutations while the migration snapshot is
-being validated and imported. The migration owner may replace the snapshot, and activation happens
-only after the gate was released successfully.
-
-The gate is stored in `sodaeconomy_runtime_state` (current MySQL schema version 6) and requires no service besides
-the configured MySQL database. Reads remain available during maintenance. An abnormal release failure
-is logged as a severe operational condition because writes intentionally remain blocked rather than
-risking a split-brain migration.
-
-## Release hardening stage 5
-
-The optional JDBC integration suite runs with MariaDB Connector/J against both MySQL and MariaDB and includes explicit two-instance network-concurrency tests. They verify that independent plugin storage instances sharing one database cannot overspend the same wallet and that one idempotency key produces exactly one durable transaction and one balance mutation even when submitted concurrently from different instances.
-
-Run these tests against an isolated MySQL or MariaDB database by setting `SODAECONOMY_TEST_MYSQL=true` and the credentials documented in `src/test/README.md`, then execute the canonical `./gradlew mysqlIntegrationTest` task. Maven may be run separately as a parity build.
-
-## Safe config reload
-
-Administrators can use `/eco reload` (permission `sodaeconomy.admin.reload`) to atomically reload
-the runtime-safe language selection, active language file, prefix, leaderboard, currency display and
-update-checker settings. Storage, database, banking, persistence, Vault and debug settings remain
-unchanged until a full server restart. Invalid or malformed configuration never partially replaces
-the active settings. See `docs/config-reload.md` for the exact supported paths and failure behaviour.
-
-## Optional update checker
-
-SodaEconomy includes a lightweight update checker that can asynchronously query the official GitHub
-Releases page and notify administrators when a newer allowed release exists. It never downloads or
-installs updates. The checker is configurable under `update-checker`, supports `stable`, `rc`, `beta`
-and `alpha` channels, and can be disabled completely. `/eco version` shows the cached state;
-`/eco version check` starts a rate-limited manual check for users with
-`sodaeconomy.admin.update`.
-
-The request contains no player names, UUIDs, economy values, server name, plugin list, database data
-or SodaEconomy telemetry identifier. Servers that must not make outbound update-check requests can
-set `update-checker.enabled: false`. See [`docs/update-checker.md`](docs/update-checker.md) for the
-configuration, channel rules and failure behaviour.
-
-## Optional PlaceholderAPI support
-
-When PlaceholderAPI is installed, SodaEconomy automatically registers a native internal expansion
-for the `%sodaeconomy_...%` namespace. PlaceholderAPI remains a soft dependency and is never shaded
-into the SodaEconomy JAR. No separate expansion download or configuration is required.
-
-Core placeholders include wallet, bank and combined balances, formatted/compact balance variants,
-the live currency symbol, and cached leaderboard position. Placeholder callbacks never perform
-synchronous SQL or disk I/O; persistent snapshots are refreshed asynchronously in the background.
-If a refresh fails, the last successful snapshot remains active. Before any successful player-data
-snapshot has loaded, affected placeholders return `-` instead of presenting backend failure as a
-real zero balance.
-
-Currency formatting and ranking limits use SodaEconomy's current runtime configuration, so a
-successful `/eco reload` is reflected automatically without `/papi reload`. See
-[`docs/placeholderapi-integration.md`](docs/placeholderapi-integration.md) for the complete placeholder
-contract, exact fallback behaviour, data sources, performance characteristics and intentionally
-unsupported placeholders.
-
-## Optional Vault support
-
-When Vault is installed, SodaEconomy can register as its economy provider. The adapter uses the
-same durable TransactionService, journal, audit, statistics and rollback paths as native commands;
-it never writes directly to storage. Vault is optional and can be disabled under
-`integrations.vault`. See `docs/vault-integration.md` for configuration and consistency details.
-
-## JDBC driver delivery
-
-MySQL and MariaDB connections use MariaDB Connector/J loaded through Paper libraries; the driver is not embedded in the SodaEconomy JAR. Existing `storage.type: MYSQL` configurations remain valid. See `docs/jdbc-driver-migration.md`.
+SodaEconomy is **source available**, not OSI open source. It is distributed under Apache License 2.0
+subject to the Commons Clause License Condition v1.0 and the express permissions in [`LICENSE`](LICENSE).
+Use on monetized Minecraft servers and networks is expressly permitted; commercializing SodaEconomy
+itself is restricted.
+
+Read [`LICENSE`](LICENSE), [`LICENSE-FAQ.md`](LICENSE-FAQ.md), [`TRADEMARKS.md`](TRADEMARKS.md) and
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for the complete terms and attribution information.

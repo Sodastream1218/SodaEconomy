@@ -31,18 +31,27 @@ import java.util.function.LongFunction;
  * wallet may legitimately resolve to {@code 0.0}, and an economy with no accounts may legitimately
  * return an empty snapshot. Persistent read failures instead complete the returned future
  * exceptionally; callers must not interpret them as real economy data.</p>
+ *
+ * @since 1.0
  */
 public interface EconomyTransactionApi {
+    /**
+     * Legacy-compatible external wallet credit entry point. New integrations should normally use
+     * the BigDecimal or minor-unit convenience methods unless they require an explicit transaction type.
+     */
     CompletableFuture<TransactionResult> deposit(UUID targetPlayerId, double amount, TransactionType type,
                                                   TransactionOrigin origin, String reason, Map<String, String> metadata);
 
+    /** Legacy-compatible external wallet debit entry point; see {@link #deposit(UUID, double, TransactionType, TransactionOrigin, String, Map)}. */
     CompletableFuture<TransactionResult> withdraw(UUID sourcePlayerId, double amount, TransactionType type,
                                                    TransactionOrigin origin, String reason, Map<String, String> metadata);
 
+    /** Legacy-compatible external wallet transfer entry point using an explicit transaction type. */
     CompletableFuture<TransactionResult> transfer(UUID sourcePlayerId, UUID targetPlayerId, double amount,
                                                    TransactionType type, TransactionOrigin origin, String reason,
                                                    Map<String, String> metadata);
 
+    /** Legacy-compatible absolute wallet balance entry point using an explicit transaction type. */
     CompletableFuture<TransactionResult> setBalance(UUID targetPlayerId, double targetBalance, TransactionType type,
                                                       TransactionOrigin origin, String reason, Map<String, String> metadata);
 
@@ -240,10 +249,13 @@ public interface EconomyTransactionApi {
                 requestOptions.metadata());
     }
 
+    /** Creates a new reversing transaction for an eligible committed transaction; the original record is never edited or deleted. */
     CompletableFuture<TransactionResult> rollback(UUID transactionId, TransactionOrigin origin, String reason);
 
+    /** Asynchronously queries immutable transaction history. Persistent read failures complete exceptionally. */
     CompletableFuture<TransactionPage> findTransactions(TransactionQuery query);
 
+    /** Returns asynchronous server-wide economy statistics; persistent read failures complete exceptionally. */
     CompletableFuture<EconomyStatistics> getStatistics();
 
     /**

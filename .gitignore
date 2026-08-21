@@ -1,48 +1,51 @@
-# =========================
 # Build output
-# =========================
 build/
 target/
 out/
+*.class
 
-# =========================
-# Gradle
-# =========================
+# Gradle / Maven local state
 .gradle/
 .gradle-user-home/
 
-# =========================
-# IntelliJ / VS Code
-# =========================
+# IDEs / editors
 .idea/
 .vscode/
-
-# =========================
-# Eclipse
-# =========================
 .project
 .classpath
 .settings/
+*.iml
+*.swp
+*.swo
 
-# =========================
-# Logs
-# =========================
-*.log
+# Environment / secrets
+.env
+.env.*
+!.env.example
 
-# =========================
-# Operating systems
-# =========================
-.DS_Store
-Thumbs.db
-
-# =========================
-# Runtime
-# =========================
+# Runtime servers and logs
 run/
+logs/
+*.log
+*.log.*
 
-# =========================
-# Temporary files
-# =========================
+# Local/runtime databases
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+
+# Generated/local artifacts
 *.tmp
 *.bak
-*.swp
+*.pid
+hs_err_pid*
+replay_pid*
+
+# Operating systems
+.DS_Store
+Thumbs.db
+Desktop.ini

@@ -3,7 +3,7 @@ version: 1.0.0
 main: de.sodaeconomy.SodaEconomy
 api-version: 1.20
 author: Sodastreamexpres
-description: Production-focused economy system with an immutable transaction journal, safe storage migrations, and an auditable API.
+description: Reliable Paper economy with SQLite/MariaDB storage, optional banking, Vault, PlaceholderAPI, audit, and rollback.
 softdepend: [Vault, floodgate, PlaceholderAPI]
 libraries:
   - org.mariadb.jdbc:mariadb-java-client:3.5.9

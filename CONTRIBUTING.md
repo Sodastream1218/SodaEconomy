@@ -47,7 +47,7 @@ Maven remains supported as a secondary parity build and must also remain green:
 ```
 
 CI verifies both build definitions. Only the Gradle `shadowJar` output is the canonical release
-artifact. See `docs/build-contracts.md`.
+artifact. See `docs/maintainers/build-contracts.md`.
 
 ### MySQL integration tests
 
@@ -66,7 +66,7 @@ $env:SODAECONOMY_TEST_MYSQL_PASSWORD = "replace-with-local-test-password"
 
 Run `./mvnw -B -ntp clean verify` separately for Maven build parity.
 
-More details are available in `src/test/README.md`.
+More details are available in `src/test/README.md` and `docs/maintainers/build-contracts.md`.
 
 ## Architecture requirements
 
@@ -137,9 +137,9 @@ Update the appropriate files when changing:
 - compatibility: `docs/compatibility.md`
 - runtime reload: `docs/config-reload.md`
 - player identities: `docs/player-identities.md`
-- Vault behavior: `docs/vault-integration.md`
-- public usage or installation: `README.md`
-- release-visible behavior: `CHANGELOG.md`
+- Vault behavior: `docs/vault.md`
+- public usage or installation: `README.md`, `INSTALL.md`, `docs/installation.md`
+- release-visible behavior: `CHANGELOG.md` and `docs/release-notes/`
 
 ## Contribution licensing and rights
 

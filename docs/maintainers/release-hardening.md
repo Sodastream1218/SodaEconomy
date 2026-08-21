@@ -12,5 +12,5 @@ The Vault dependency is startup-only and optional (`provided`/`compileOnly`, `so
 A safely cancellable queue timeout returns `FAILURE` before mutation starts. Once authoritative
 execution has started, SodaEconomy waits for its definitive result rather than returning an
 ambiguous failure which could later become a committed ghost transaction. See
-`docs/vault-integration.md` for configuration, identity resolution, bank semantics and the release
+`docs/vault.md` for configuration, identity resolution, bank semantics and the release
 smoke-test checklist.
