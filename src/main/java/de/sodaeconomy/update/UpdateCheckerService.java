@@ -164,7 +164,7 @@ public final class UpdateCheckerService implements AutoCloseable {
                                 new IllegalStateException("Update source returned no completion future"))
                         : fetched);
 
-        CompletableFuture<UpdateCheckResult> future = sourceFuture
+        CompletableFuture<UpdateCheckResult> evaluatedFuture = sourceFuture
                 .handleAsync((releases, throwable) -> {
                     if (throwable != null) {
                         if (generation == settingsGeneration.get()) logFailure(unwrap(throwable));
@@ -172,17 +172,28 @@ public final class UpdateCheckerService implements AutoCloseable {
                     }
                     return evaluate(installed, releases == null ? List.of() : releases, snapshot);
                 }, executor);
-        inFlight = future;
-        future.whenCompleteAsync((checkResult, throwable) -> {
+
+        /*
+         * Publishing is part of the returned completion chain. A caller that observes checkNow()
+         * as complete must also be able to observe the cached result. Keeping publication in a
+         * detached whenCompleteAsync callback creates a race where an immediate second check can
+         * miss the freshly calculated cache entry and issue a duplicate HTTP request.
+         */
+        CompletableFuture<UpdateCheckResult> future = evaluatedFuture.thenApplyAsync(checkResult -> {
             boolean publish = generation == settingsGeneration.get() && !closed && checkResult != null;
             if (publish) {
                 lastResult.set(checkResult);
                 if (automatic) runOnMainThread(() -> notifyAutomaticListeners(checkResult));
             }
+            return checkResult;
+        }, executor);
+
+        inFlight = future;
+        future.whenComplete((checkResult, throwable) -> {
             synchronized (UpdateCheckerService.this) {
                 if (inFlight == future) inFlight = null;
             }
-        }, executor);
+        });
         return future;
     }
 

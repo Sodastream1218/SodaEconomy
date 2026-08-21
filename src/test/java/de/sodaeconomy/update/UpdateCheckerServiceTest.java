@@ -151,9 +151,13 @@ class UpdateCheckerServiceTest extends MockBukkitTestBase {
         UpdateCheckerService service = service(source(calls,
                 List.of(new UpdateRelease("1.1.0", false, RELEASE))), UpdateCheckerSettings.defaults(), "1.0.0");
 
+        UpdateCheckResult first = service.checkNow().join();
+        assertEquals(UpdateCheckStatus.UPDATE_AVAILABLE, first.status());
+        assertEquals(first, service.lastResult(),
+                "A completed check must publish its cache entry before callers observe completion");
+
         assertEquals(UpdateCheckStatus.UPDATE_AVAILABLE, service.checkNow().join().status());
-        assertEquals(UpdateCheckStatus.UPDATE_AVAILABLE, service.checkNow().join().status());
-        assertEquals(1, calls.get());
+        assertEquals(1, calls.get(), "A fresh cached result must prevent a duplicate source request");
         service.close();
     }
 
